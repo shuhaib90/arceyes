@@ -8,18 +8,6 @@ export async function handlePrepareSend(token: string, amount: string, recipient
   const session = await getCurrentUserSession();
   const baseUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://arceyes-agent.vercel.app';
 
-  // 🔒 Verify 1-Hour Execution Lock
-  const activeExecutionSession = await db.getActiveExecutionSession(session.userId);
-  if (!activeExecutionSession) {
-    const unlockUrl = `${baseUrl}/dashboard/permissions`;
-    return {
-      status: 'execution_locked',
-      error: 'EXECUTION_LOCKED',
-      unlock_url: unlockUrl,
-      message: `🔒 ArcEyes execution is locked. Enter your 6-digit ArcEyes Execution PIN on the secure website to unlock financial actions for 1 hour: ${unlockUrl}`,
-    };
-  }
-
   const tokenInfo = getTokenBySymbolOrAddress(token);
 
   const connections = await db.getConnections(session.userId);
@@ -60,7 +48,7 @@ export async function handlePrepareSend(token: string, amount: string, recipient
       status: 'auto_approved_and_confirmed',
       approval_id: autoApproval.id,
       transactionHash: broadcastResult.txHash,
-      message: `✓ Autonomous execution active: Transfer of ${amount} ${tokenInfo.symbol} to ${recipient} auto-approved & confirmed on Arc EVM.`,
+      message: `✓ Auto-Approve Mode Active: Transfer of ${amount} ${tokenInfo.symbol} to ${recipient} confirmed on Arc EVM.`,
       explorerUrl: `https://explorer.testnet.arc.network/tx/${broadcastResult.txHash}`,
     };
   }
@@ -94,7 +82,7 @@ export async function handlePrepareSend(token: string, amount: string, recipient
     status: 'approval_required',
     approval_id: approval.id,
     approval_url: approvalUrl,
-    message: `ArcEyes requires approval to send ${amount} ${tokenInfo.symbol} to ${recipient}. Please approve here: ${approvalUrl}`,
+    message: `ArcEyes Confirmation Guard: Click here to approve sending ${amount} ${tokenInfo.symbol} to ${recipient}: ${approvalUrl}`,
     expires_at: approval.expires_at,
   };
 }
@@ -102,18 +90,6 @@ export async function handlePrepareSend(token: string, amount: string, recipient
 export async function handlePrepareBridge(token: string, amount: string, sourceChain: string, targetChain: string, clientName: string = 'ChatGPT') {
   const session = await getCurrentUserSession();
   const baseUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://arceyes-agent.vercel.app';
-
-  // 🔒 Verify 1-Hour Execution Lock
-  const activeExecutionSession = await db.getActiveExecutionSession(session.userId);
-  if (!activeExecutionSession) {
-    const unlockUrl = `${baseUrl}/dashboard/permissions`;
-    return {
-      status: 'execution_locked',
-      error: 'EXECUTION_LOCKED',
-      unlock_url: unlockUrl,
-      message: `🔒 ArcEyes execution is locked. Enter your 6-digit ArcEyes Execution PIN on the secure website to unlock financial actions for 1 hour: ${unlockUrl}`,
-    };
-  }
 
   const bridgeAdapter = registry.getPrimaryBridge();
   const quote = await bridgeAdapter.getBridgeQuote(token, amount, sourceChain, targetChain);
@@ -157,7 +133,7 @@ export async function handlePrepareBridge(token: string, amount: string, sourceC
       status: 'auto_approved_and_confirmed',
       approval_id: autoApproval.id,
       transactionHash: broadcastResult.txHash,
-      message: `✓ Autonomous execution active: Bridge of ${amount} ${quote.token} from ${sourceChain} to ${targetChain} auto-approved & confirmed via Circle CCTP.`,
+      message: `✓ Auto-Approve Mode Active: Bridge of ${amount} ${quote.token} from ${sourceChain} to ${targetChain} confirmed via Circle CCTP.`,
       explorerUrl: `https://explorer.testnet.arc.network/tx/${broadcastResult.txHash}`,
     };
   }
@@ -192,7 +168,7 @@ export async function handlePrepareBridge(token: string, amount: string, sourceC
     status: 'approval_required',
     approval_id: approval.id,
     approval_url: approvalUrl,
-    message: `ArcEyes requires approval to bridge ${amount} ${quote.token} from ${sourceChain} to ${targetChain}. Approve here: ${approvalUrl}`,
+    message: `ArcEyes Confirmation Guard: Click here to approve bridging ${amount} ${quote.token} from ${sourceChain} to ${targetChain}: ${approvalUrl}`,
     expires_at: approval.expires_at,
   };
 }

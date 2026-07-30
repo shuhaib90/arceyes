@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Key, Shield, AlertTriangle, Trash2, Save, Check, Zap, Cpu, Lock, Unlock, Clock, Loader2, KeyRound } from 'lucide-react';
+import { Shield, Save, Check, Zap, Cpu, Lock, Unlock } from 'lucide-react';
 import { usePrivy } from '@privy-io/react-auth';
 
 export default function PermissionsPage() {
@@ -12,19 +12,6 @@ export default function PermissionsPage() {
   } catch (e) {
     console.warn(e);
   }
-
-  // Unlock State
-  const [pin, setPin] = useState('');
-  const [pinError, setPinError] = useState('');
-  const [unlocking, setUnlocking] = useState(false);
-  const [executionUnlocked, setExecutionUnlocked] = useState(false);
-  const [remainingMinutes, setRemainingMinutes] = useState(0);
-
-  // New PIN Creation State
-  const [newPin, setNewPin] = useState('');
-  const [settingPin, setSettingPin] = useState(false);
-  const [pinSuccessMsg, setPinSuccessMsg] = useState('');
-  const [createPinError, setCreatePinError] = useState('');
 
   const [autonomousEnabled, setAutonomousEnabled] = useState(false);
   const [maxAmountUsd, setMaxAmountUsd] = useState('50');
@@ -42,89 +29,6 @@ export default function PermissionsPage() {
 
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    checkExecutionSession();
-  }, []);
-
-  const checkExecutionSession = async () => {
-    try {
-      const res = await fetch('/api/execution/unlock');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.unlocked) {
-          setExecutionUnlocked(true);
-          setRemainingMinutes(data.remaining_minutes || 60);
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleUnlockPin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!pin || pin.length < 4) {
-      setPinError('Please enter your ArcEyes Execution PIN (Default: 123456)');
-      return;
-    }
-
-    try {
-      setUnlocking(true);
-      setPinError('');
-      const res = await fetch('/api/execution/unlock', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin }),
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setExecutionUnlocked(true);
-        setRemainingMinutes(60);
-        setPin('');
-      } else {
-        setPinError(data.error || 'Invalid PIN. Try default PIN: 123456');
-      }
-    } catch (err: any) {
-      setPinError('Error unlocking execution session');
-    } finally {
-      setUnlocking(false);
-    }
-  };
-
-  const handleSetCustomPin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPin || newPin.length < 4) {
-      setCreatePinError('New PIN must be 4 to 6 digits');
-      return;
-    }
-
-    try {
-      setSettingPin(true);
-      setCreatePinError('');
-      setPinSuccessMsg('');
-
-      const res = await fetch('/api/execution/pin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: newPin }),
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setPinSuccessMsg('✓ Your custom ArcEyes Execution PIN has been updated!');
-        setNewPin('');
-        setTimeout(() => setPinSuccessMsg(''), 4000);
-      } else {
-        setCreatePinError(data.error || 'Failed to update PIN');
-      }
-    } catch (err: any) {
-      setCreatePinError('Error setting new execution PIN');
-    } finally {
-      setSettingPin(false);
-    }
-  };
-
   const toggleScope = (key: keyof typeof scopes) => {
     setScopes((prev) => ({ ...prev, [key]: !prev[key] }));
   };
@@ -139,128 +43,20 @@ export default function PermissionsPage() {
       <div className="border-b border-white/20 pb-6">
         <h1 className="text-3xl font-extrabold uppercase tracking-tight">Permissions &amp; Execution Security</h1>
         <p className="text-xs text-white/60 mt-1">
-          Manage 1-Hour Financial Action Locks, ArcEyes PIN authentication, and MCP client scopes.
+          Configure Auto-Approve vs Manual Confirmation modes and fine-grained MCP scope permissions for AI agents.
         </p>
       </div>
 
-      {/* 1-HOUR FINANCIAL EXECUTION LOCK CARD */}
-      <div className={`border-2 p-6 transition-all ${executionUnlocked ? 'border-emerald-400 bg-emerald-950/20' : 'border-white bg-black'}`}>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/20 pb-4 mb-4">
-          <div className="flex items-center space-x-3">
-            {executionUnlocked ? (
-              <Unlock className="w-7 h-7 text-emerald-400 shrink-0 animate-pulse" />
-            ) : (
-              <Lock className="w-7 h-7 text-white shrink-0" />
-            )}
-            <div>
-              <div className="text-xs uppercase font-extrabold tracking-wider text-white/60">FINANCIAL ACTION EXECUTION SECURITY</div>
-              <div className="text-xl font-extrabold uppercase flex items-center space-x-2">
-                <span>Trades &amp; Swaps:</span>
-                <span className={executionUnlocked ? 'text-emerald-400' : 'text-white'}>
-                  {executionUnlocked ? `🟢 UNLOCKED (${remainingMinutes}m remaining)` : '🔒 LOCKED'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <span
-            className={`px-3 py-1 text-xs font-bold uppercase border ${
-              executionUnlocked
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                : 'bg-white/10 text-white border-white/20'
-            }`}
-          >
-            {executionUnlocked ? '1-HOUR SESSION ACTIVE' : 'PIN UNLOCK REQUIRED'}
-          </span>
-        </div>
-
-        {!executionUnlocked ? (
-          <div className="space-y-4">
-            <p className="text-xs text-white/70 leading-relaxed">
-              Read operations (balances, portfolio) work automatically. Financial transaction requests from ChatGPT or Claude require entering your ArcEyes Execution PIN to unlock 1 hour of trading.
-            </p>
-
-            <form onSubmit={handleUnlockPin} className="space-y-3 max-w-md pt-2">
-              <label className="block text-xs font-bold uppercase text-white">
-                Enter ArcEyes Execution PIN (Default: 123456)
-              </label>
-              <div className="flex items-center space-x-3">
-                <input
-                  type="password"
-                  maxLength={6}
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  placeholder="123456"
-                  className="bg-white text-black font-mono text-lg tracking-widest border-2 border-white p-2.5 w-40 font-bold text-center"
-                />
-                <button
-                  type="submit"
-                  disabled={unlocking}
-                  className="border-2 border-white bg-white text-black px-6 py-3 text-xs font-extrabold uppercase hover:bg-black hover:text-white transition-all flex items-center space-x-2 shrink-0 disabled:opacity-50"
-                >
-                  {unlocking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Unlock className="w-4 h-4" />}
-                  <span>Unlock for 1 Hour →</span>
-                </button>
-              </div>
-              {pinError && <div className="text-xs text-rose-400 font-bold">{pinError}</div>}
-            </form>
-          </div>
-        ) : (
-          <div className="space-y-2 text-xs text-emerald-300">
-            <p>
-              ✓ Financial execution is <strong>UNLOCKED</strong> for {remainingMinutes} minutes. ChatGPT &amp; Claude can prepare swaps and transfers.
-            </p>
-            <p className="text-[11px] text-white/60">
-              Note: The AI connection remains permanently connected. After {remainingMinutes} minutes, financial actions auto-lock while read permissions stay active.
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* CREATE / CHANGE CUSTOM EXECUTION PIN CARD */}
-      <div className="border border-white/30 p-6 bg-black space-y-4">
-        <div className="flex items-center space-x-3 border-b border-white/20 pb-3">
-          <KeyRound className="w-5 h-5 text-white" />
-          <h2 className="text-xl font-bold uppercase">Create / Change Your Execution PIN</h2>
-        </div>
-
-        <p className="text-xs text-white/70 leading-relaxed">
-          Set your secret 6-digit security PIN used to unlock 1-hour trading sessions for ChatGPT &amp; Claude.
-        </p>
-
-        <form onSubmit={handleSetCustomPin} className="space-y-3 max-w-md pt-2">
-          <label className="block text-xs font-bold uppercase text-white/60">New 4-6 Digit Security PIN</label>
-          <div className="flex items-center space-x-3">
-            <input
-              type="password"
-              maxLength={6}
-              value={newPin}
-              onChange={(e) => setNewPin(e.target.value)}
-              placeholder="e.g. 889900"
-              className="bg-white text-black font-mono text-lg tracking-widest border-2 border-white p-2.5 w-40 font-bold text-center"
-            />
-            <button
-              type="submit"
-              disabled={settingPin}
-              className="border-2 border-white bg-white text-black px-6 py-3 text-xs font-extrabold uppercase hover:bg-black hover:text-white transition-all flex items-center space-x-2 shrink-0 disabled:opacity-50"
-            >
-              {settingPin ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              <span>Save New PIN →</span>
-            </button>
-          </div>
-          {pinSuccessMsg && <div className="text-xs text-emerald-400 font-bold">{pinSuccessMsg}</div>}
-          {createPinError && <div className="text-xs text-rose-400 font-bold">{createPinError}</div>}
-        </form>
-      </div>
-
-      {/* Autonomous AI Delegated Execution Banner Card */}
+      {/* Autonomous Auto-Approve vs Manual Confirmation Mode Banner */}
       <div className={`border-2 p-6 transition-all ${autonomousEnabled ? 'border-white bg-white text-black' : 'border-white/30 bg-black text-white'}`}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-current pb-4 mb-4">
           <div className="flex items-center space-x-3">
             <Zap className={`w-6 h-6 shrink-0 ${autonomousEnabled ? 'text-black' : 'text-white'}`} />
             <div>
-              <div className="text-xs uppercase font-extrabold tracking-wider">DELEGATED AUTONOMOUS EXECUTION</div>
-              <div className="text-base font-extrabold uppercase">Pre-Approved AI Execution (No-Approval Mode)</div>
+              <div className="text-xs uppercase font-extrabold tracking-wider">EXECUTION MODE CONTROL</div>
+              <div className="text-base font-extrabold uppercase">
+                {autonomousEnabled ? 'Auto-Approve Execution Mode' : 'Manual Confirmation Guard Mode'}
+              </div>
             </div>
           </div>
 
@@ -272,15 +68,15 @@ export default function PermissionsPage() {
                 : 'bg-white text-black border-white hover:bg-black hover:text-white'
             }`}
           >
-            {autonomousEnabled ? 'ACTIVE: AUTONOMOUS' : 'OFF: MANUAL APPROVAL REQUIRED'}
+            {autonomousEnabled ? 'AUTO-APPROVE: ACTIVE' : 'MANUAL APPROVAL: ACTIVE'}
           </button>
         </div>
 
         <div className="space-y-4 text-xs">
           <p className="leading-relaxed font-mono">
             {autonomousEnabled
-              ? '⚡ Autonomous execution is ON. When ChatGPT or Claude executes a swap, transfer, or bridge within your configured max limit, ArcEyes will auto-approve & broadcast immediately without waiting for manual confirmation in the Paybox UI.'
-              : '🔒 Manual Approval mode is ACTIVE. Every transaction prepared by ChatGPT or Claude creates a Pending Approval request and requires your explicit authorization in the ArcEyes Paybox window.'}
+              ? '⚡ Auto-Approve mode is ACTIVE. When ChatGPT or Claude executes a swap, transfer, or bridge within your max limit, ArcEyes will auto-approve & broadcast immediately to Arc EVM.'
+              : '🔒 Manual Confirmation mode is ACTIVE. Every transaction prepared by ChatGPT or Claude creates a secure confirmation link for your explicit authorization.'}
           </p>
 
           {autonomousEnabled && (
@@ -308,7 +104,7 @@ export default function PermissionsPage() {
         <div className="flex items-center justify-between border-b border-white/20 pb-4">
           <div>
             <h2 className="text-xl font-bold uppercase">MCP Scope Permissions</h2>
-            <p className="text-xs text-white/60">Configure fine-grained read and write permissions</p>
+            <p className="text-xs text-white/60">Configure fine-grained read and write permissions for connected AI agents</p>
           </div>
         </div>
 
@@ -355,16 +151,6 @@ export default function PermissionsPage() {
             <span>{saved ? 'Permissions Saved' : 'Save Scopes & Settings'}</span>
           </button>
         </div>
-      </div>
-
-      <div className="border border-white/20 p-4 bg-white/5 text-xs space-y-2">
-        <div className="font-bold uppercase text-white flex items-center space-x-2">
-          <AlertTriangle className="w-4 h-4 text-amber-400" />
-          <span>SECURITY PRINCIPLE: AI CONNECTION ≠ WALLET CONTROL</span>
-        </div>
-        <p className="text-white/70">
-          Entering your ArcEyes Execution PIN unlocks financial transaction requests for 1 hour. Private keys and seed phrases are NEVER sent to AI models or MCP clients.
-        </p>
       </div>
     </div>
   );

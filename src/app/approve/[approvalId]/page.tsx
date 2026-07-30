@@ -173,14 +173,14 @@ function SafeApprovalContent({ approvalId }: { approvalId: string }) {
       <div className="w-full max-w-md mb-6 flex items-center justify-between border-b border-white/20 pb-4">
         <Link href="/dashboard" className="flex items-center space-x-2">
           <div className="w-7 h-7 border border-white flex items-center justify-center bg-black text-sm">👁</div>
-          <span className="font-bold uppercase tracking-wider text-base">ARCEYES PAYBOX</span>
+          <span className="font-bold uppercase tracking-wider text-base">ARCEYES ACTION GUARD</span>
         </Link>
         <span className="text-xs bg-white text-black font-bold px-2 py-0.5 uppercase">
           {approval?.status || 'PENDING'}
         </span>
       </div>
 
-      {/* Main Paybox Window Card */}
+      {/* Main Action Guard Window Card */}
       <div className="w-full max-w-md border-2 border-white bg-black p-6 space-y-6">
         {/* Confirmed Screen */}
         {isConfirmed ? (
@@ -369,7 +369,7 @@ function SafeApprovalContent({ approvalId }: { approvalId: string }) {
       </div>
 
       <div className="mt-6 text-xs text-white/50 text-center">
-        ArcEyes Agentic Wallet &bull; Secure EVM Action Layer
+        ArcEyes Agentic Wallet &bull; Secure EVM Action Guard
       </div>
     </div>
   );

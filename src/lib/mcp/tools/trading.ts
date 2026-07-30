@@ -16,22 +16,10 @@ export async function handlePrepareSwap(tokenIn: string, tokenOut: string, amoun
   const session = await getCurrentUserSession();
   const baseUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://arceyes-agent.vercel.app';
 
-  // 🔒 Verify 1-Hour Execution Lock
-  const activeExecutionSession = await db.getActiveExecutionSession(session.userId);
-  if (!activeExecutionSession) {
-    const unlockUrl = `${baseUrl}/dashboard/permissions`;
-    return {
-      status: 'execution_locked',
-      error: 'EXECUTION_LOCKED',
-      unlock_url: unlockUrl,
-      message: `🔒 ArcEyes execution is locked. Enter your 6-digit ArcEyes Execution PIN on the secure website to unlock financial actions for 1 hour: ${unlockUrl}`,
-    };
-  }
-
   const dex = registry.getPrimaryDEX();
   const quote = await dex.getQuote(tokenIn, tokenOut, amount, slippage);
 
-  // Check if Autonomous Delegated Execution is enabled for ChatGPT/Claude connections
+  // Check if Autonomous Auto-Approve Mode is enabled
   const connections = await db.getConnections(session.userId);
   const conn = connections.find((c) => c.provider === 'chatgpt' || c.provider === 'claude') || connections[0];
   const numAmount = parseFloat(amount) || 0;
@@ -39,7 +27,7 @@ export async function handlePrepareSwap(tokenIn: string, tokenOut: string, amoun
   const isAutoApproved = conn?.autonomous_enabled && numAmount <= (conn?.max_auto_amount_usd || 50);
 
   if (isAutoApproved) {
-    // ⚡ Autonomous Delegated Execution: Immediately auto-approve and broadcast to Arc EVM
+    // ⚡ Autonomous Auto-Approve Mode: Immediately execute and broadcast to Arc EVM
     const broadcastResult = await broadcastTransaction({ action: 'swap', quote });
 
     const autoApproval = await db.createApprovalRequest({
@@ -75,7 +63,7 @@ export async function handlePrepareSwap(tokenIn: string, tokenOut: string, amoun
       status: 'auto_approved_and_confirmed',
       approval_id: autoApproval.id,
       transactionHash: broadcastResult.txHash,
-      message: `✓ Autonomous execution active: Swap of ${quote.amountIn} ${quote.tokenIn} → ${quote.amountOut} ${quote.tokenOut} auto-approved & confirmed on Arc EVM.`,
+      message: `✓ Auto-Approve Mode Active: Swap of ${quote.amountIn} ${quote.tokenIn} → ${quote.amountOut} ${quote.tokenOut} confirmed on Arc EVM.`,
       explorerUrl: `https://explorer.testnet.arc.network/tx/${broadcastResult.txHash}`,
       summary: {
         pay: `${quote.amountIn} ${quote.tokenIn}`,
@@ -85,7 +73,7 @@ export async function handlePrepareSwap(tokenIn: string, tokenOut: string, amoun
     };
   }
 
-  // Standard Manual Paybox Approval Mode
+  // Standard Manual Confirmation Mode
   const approval = await db.createApprovalRequest({
     user_id: session.userId,
     wallet_id: 'wlt_arceyes_demo_1',
@@ -119,7 +107,7 @@ export async function handlePrepareSwap(tokenIn: string, tokenOut: string, amoun
     status: 'approval_required',
     approval_id: approval.id,
     approval_url: approvalUrl,
-    message: `ArcEyes needs your approval to swap ${quote.amountIn} ${quote.tokenIn} → ${quote.amountOut} ${quote.tokenOut}. Open the approval URL to confirm: ${approvalUrl}`,
+    message: `ArcEyes Confirmation Guard: Click here to approve swap of ${quote.amountIn} ${quote.tokenIn} → ${quote.amountOut} ${quote.tokenOut}: ${approvalUrl}`,
     expires_at: approval.expires_at,
     summary: {
       pay: `${quote.amountIn} ${quote.tokenIn}`,
