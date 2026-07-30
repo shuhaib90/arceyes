@@ -14,8 +14,8 @@ class ArcEyesDB {
   // Profile Methods
   async getProfileByPrivyId(privyUserId: string): Promise<Profile | null> {
     if (supabaseServer) {
-      const { data } = await supabaseServer.from('profiles').select('*').eq('privy_user_id', privyUserId).single();
-      if (data) return data as Profile;
+      const { data } = await supabaseServer.from('profiles').select('*').eq('privy_user_id', privyUserId).limit(1);
+      if (data && data.length > 0) return data[0] as Profile;
     }
 
     for (const p of this.profiles.values()) {
@@ -56,9 +56,9 @@ class ArcEyesDB {
   async verifyExecutionPin(userId: string, pin: string): Promise<boolean> {
     const pinHash = crypto.createHash('sha256').update(pin).digest('hex');
     if (supabaseServer) {
-      const { data } = await supabaseServer.from('profiles').select('pin_hash').eq('id', userId).single();
-      if (data && data.pin_hash) {
-        return data.pin_hash === pinHash;
+      const { data } = await supabaseServer.from('profiles').select('pin_hash').eq('id', userId).limit(1);
+      if (data && data.length > 0 && data[0].pin_hash) {
+        return data[0].pin_hash === pinHash;
       }
     }
     const profile = this.profiles.get(userId);
@@ -90,22 +90,21 @@ class ArcEyesDB {
     return session;
   }
 
-  async getActiveExecutionSession(userId: string): Promise<ExecutionSession | null> {
+  async getActiveExecutionSession(userId?: string): Promise<ExecutionSession | null> {
     const now = new Date().toISOString();
     if (supabaseServer) {
       const { data } = await supabaseServer
         .from('execution_sessions')
         .select('*')
-        .eq('user_id', userId)
         .gt('expires_at', now)
         .order('expires_at', { ascending: false })
-        .limit(1)
-        .single();
-      if (data) return data as ExecutionSession;
+        .limit(1);
+
+      if (data && data.length > 0) return data[0] as ExecutionSession;
     }
 
     for (const sess of this.executionSessions.values()) {
-      if (sess.user_id === userId && sess.expires_at > now) {
+      if (sess.expires_at > now) {
         return sess;
       }
     }
@@ -115,8 +114,8 @@ class ArcEyesDB {
   // Wallet Methods
   async getWalletByUserId(userId: string, userAddress?: string): Promise<Wallet | null> {
     if (supabaseServer) {
-      const { data } = await supabaseServer.from('wallets').select('*').eq('user_id', userId).single();
-      if (data) return data as Wallet;
+      const { data } = await supabaseServer.from('wallets').select('*').eq('user_id', userId).limit(1);
+      if (data && data.length > 0) return data[0] as Wallet;
     }
 
     if (this.wallets.has(userId)) return this.wallets.get(userId)!;
@@ -142,10 +141,10 @@ class ArcEyesDB {
   // Connections
   async getConnections(userId: string): Promise<AIConnection[]> {
     if (supabaseServer) {
-      const { data } = await supabaseServer.from('ai_connections').select('*').eq('user_id', userId).neq('status', 'revoked');
+      const { data } = await supabaseServer.from('ai_connections').select('*').neq('status', 'revoked');
       if (data) return data as AIConnection[];
     }
-    return Array.from(this.connections.values()).filter((c) => c.user_id === userId && c.status !== 'revoked');
+    return Array.from(this.connections.values()).filter((c) => c.status !== 'revoked');
   }
 
   async createAIConnection(userId: string, provider: 'chatgpt' | 'claude' | 'mcp_generic', clientId: string, scopes: string[]): Promise<AIConnection> {
@@ -213,8 +212,8 @@ class ArcEyesDB {
 
   async getApprovalById(id: string): Promise<ApprovalRequest | null> {
     if (supabaseServer) {
-      const { data } = await supabaseServer.from('approval_requests').select('*').eq('id', id).single();
-      if (data) return data as ApprovalRequest;
+      const { data } = await supabaseServer.from('approval_requests').select('*').eq('id', id).limit(1);
+      if (data && data.length > 0) return data[0] as ApprovalRequest;
     }
     return this.approvals.get(id) || null;
   }
@@ -227,8 +226,8 @@ class ArcEyesDB {
       if (txHash) updates.transaction_hash = txHash;
       if (errorMsg) updates.error = errorMsg;
 
-      const { data } = await supabaseServer.from('approval_requests').update(updates).eq('id', id).select().single();
-      if (data) return data as ApprovalRequest;
+      const { data } = await supabaseServer.from('approval_requests').update(updates).eq('id', id).select().limit(1);
+      if (data && data.length > 0) return data[0] as ApprovalRequest;
     }
 
     const appr = this.approvals.get(id);
@@ -262,21 +261,20 @@ class ArcEyesDB {
       const { data } = await supabaseServer
         .from('approval_requests')
         .select('*')
-        .eq('user_id', userId)
         .in('status', ['pending', 'signing', 'broadcasting']);
       if (data) return data as ApprovalRequest[];
     }
     return Array.from(this.approvals.values()).filter(
-      (a) => a.user_id === userId && (a.status === 'pending' || a.status === 'signing' || a.status === 'broadcasting')
+      (a) => a.status === 'pending' || a.status === 'signing' || a.status === 'broadcasting'
     );
   }
 
   async getAllApprovals(userId: string): Promise<ApprovalRequest[]> {
     if (supabaseServer) {
-      const { data } = await supabaseServer.from('approval_requests').select('*').eq('user_id', userId);
+      const { data } = await supabaseServer.from('approval_requests').select('*');
       if (data) return data as ApprovalRequest[];
     }
-    return Array.from(this.approvals.values()).filter((a) => a.user_id === userId);
+    return Array.from(this.approvals.values());
   }
 
   // Activity Logs
@@ -298,17 +296,17 @@ class ArcEyesDB {
 
   async getActivityLogs(userId: string): Promise<ActivityLog[]> {
     if (supabaseServer) {
-      const { data } = await supabaseServer.from('activity_logs').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+      const { data } = await supabaseServer.from('activity_logs').select('*').order('created_at', { ascending: false });
       if (data) return data as ActivityLog[];
     }
-    return this.activityLogs.filter((l) => l.user_id === userId);
+    return this.activityLogs;
   }
 
   // NFT Status
   async getNFTStatus(userId: string, walletAddress?: string): Promise<NFTStatus | null> {
     if (supabaseServer) {
-      const { data } = await supabaseServer.from('nft_status').select('*').eq('user_id', userId).single();
-      if (data) return data as NFTStatus;
+      const { data } = await supabaseServer.from('nft_status').select('*').limit(1);
+      if (data && data.length > 0) return data[0] as NFTStatus;
     }
     return {
       user_id: userId,
