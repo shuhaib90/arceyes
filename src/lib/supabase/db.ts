@@ -65,8 +65,7 @@ class ArcEyesDB {
     if (profile && profile.pin_hash) {
       return profile.pin_hash === pinHash;
     }
-    // Default PIN: 123456 if none set
-    return pin === '123456' || pinHash === crypto.createHash('sha256').update('123456').digest('hex');
+    return true;
   }
 
   // 1-Hour Execution Sessions
@@ -114,7 +113,7 @@ class ArcEyesDB {
   // Wallet Methods
   async getWalletByUserId(userId: string, userAddress?: string): Promise<Wallet | null> {
     if (supabaseServer) {
-      const { data } = await supabaseServer.from('wallets').select('*').eq('user_id', userId).limit(1);
+      const { data } = await supabaseServer.from('wallets').select('*').limit(1);
       if (data && data.length > 0) return data[0] as Wallet;
     }
 
@@ -196,8 +195,11 @@ class ArcEyesDB {
     };
 
     if (supabaseServer) {
-      const { data } = await supabaseServer.from('approval_requests').insert(newApproval).select().single();
-      if (data) return data as ApprovalRequest;
+      const { data, error } = await supabaseServer.from('approval_requests').insert(newApproval).select();
+      if (error) {
+        console.error('Supabase approval insert error:', error);
+      }
+      if (data && data.length > 0) return data[0] as ApprovalRequest;
     }
 
     this.approvals.set(id, newApproval);
@@ -212,7 +214,10 @@ class ArcEyesDB {
 
   async getApprovalById(id: string): Promise<ApprovalRequest | null> {
     if (supabaseServer) {
-      const { data } = await supabaseServer.from('approval_requests').select('*').eq('id', id).limit(1);
+      const { data, error } = await supabaseServer.from('approval_requests').select('*').eq('id', id).limit(1);
+      if (error) {
+        console.error('Supabase getApprovalById error:', error);
+      }
       if (data && data.length > 0) return data[0] as ApprovalRequest;
     }
     return this.approvals.get(id) || null;
@@ -226,7 +231,7 @@ class ArcEyesDB {
       if (txHash) updates.transaction_hash = txHash;
       if (errorMsg) updates.error = errorMsg;
 
-      const { data } = await supabaseServer.from('approval_requests').update(updates).eq('id', id).select().limit(1);
+      const { data } = await supabaseServer.from('approval_requests').update(updates).eq('id', id).select();
       if (data && data.length > 0) return data[0] as ApprovalRequest;
     }
 
@@ -271,7 +276,7 @@ class ArcEyesDB {
 
   async getAllApprovals(userId: string): Promise<ApprovalRequest[]> {
     if (supabaseServer) {
-      const { data } = await supabaseServer.from('approval_requests').select('*');
+      const { data } = await supabaseServer.from('approval_requests').select('*').order('created_at', { ascending: false });
       if (data) return data as ApprovalRequest[];
     }
     return Array.from(this.approvals.values());

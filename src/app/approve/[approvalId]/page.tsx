@@ -43,42 +43,11 @@ function SafeApprovalContent({ approvalId }: { approvalId: string }) {
         const data = await res.json();
         setApproval(data);
       } else {
-        setApproval({
-          id: approvalId,
-          user_id: 'usr_arceyes_demo_1',
-          wallet_id: 'wlt_arceyes_demo_1',
-          connection_id: 'conn_chatgpt_1',
-          action: 'swap',
-          request_payload: {
-            tokenIn: 'USDC',
-            tokenOut: 'XYZ',
-            amountIn: '10',
-            amountOut: '245',
-            slippage: '0.5%',
-            protocol: 'ArcDEX Aggregator',
-          },
-          transaction_preview: {
-            payTokenSymbol: 'USDC',
-            payAmount: '10.00',
-            receiveTokenSymbol: 'XYZ',
-            receiveAmount: '245.00',
-            network: 'Arc Testnet (Chain ID 763373)',
-            protocol: 'ArcDEX Aggregator',
-            estimatedFeeArc: '0.0012 ARC',
-            slippagePct: '0.5%',
-            requestingClient: 'ChatGPT (OpenAI MCP)',
-          },
-          status: 'pending',
-          expires_at: new Date(Date.now() + 1800000).toISOString(),
-          created_at: new Date().toISOString(),
-          approved_at: null,
-          rejected_at: null,
-          transaction_hash: null,
-          error: null,
-        });
+        setApproval(null);
       }
     } catch (err) {
       console.error(err);
+      setApproval(null);
     } finally {
       setLoading(false);
     }
@@ -160,6 +129,28 @@ function SafeApprovalContent({ approvalId }: { approvalId: string }) {
           <Loader2 className="w-8 h-8 animate-spin mx-auto text-white" />
           <div className="text-sm uppercase tracking-wider">Loading ArcEyes Approval...</div>
         </div>
+      </div>
+    );
+  }
+
+  if (!approval) {
+    return (
+      <div className="min-h-screen bg-black text-white font-mono flex flex-col items-center justify-center p-6 text-center space-y-6">
+        <div className="w-16 h-16 border-2 border-white/40 flex items-center justify-center text-2xl font-bold">
+          !
+        </div>
+        <div className="space-y-2 max-w-md">
+          <h1 className="text-2xl font-extrabold uppercase">Approval Request Not Found</h1>
+          <p className="text-xs text-white/60">
+            This approval request ID ({approvalId}) may have expired or does not exist in the database.
+          </p>
+        </div>
+        <Link
+          href="/dashboard"
+          className="border-2 border-white bg-white text-black px-8 py-3 text-xs font-extrabold uppercase hover:bg-black hover:text-white transition-all"
+        >
+          Return to Dashboard →
+        </Link>
       </div>
     );
   }
@@ -296,7 +287,7 @@ function SafeApprovalContent({ approvalId }: { approvalId: string }) {
                 {approval?.transaction_preview.recipient && (
                   <div className="flex justify-between items-baseline">
                     <span className="text-xs text-white/60">RECIPIENT</span>
-                    <span className="text-xs font-bold text-white">
+                    <span className="text-xs font-bold text-white break-all">
                       {approval.transaction_preview.recipient}
                     </span>
                   </div>

@@ -100,7 +100,7 @@ export default function ApprovalsDashboardPage() {
                     href={`/approve/${appr.id}`}
                     className="inline-block border border-white bg-white text-black px-6 py-2.5 text-xs font-extrabold uppercase hover:bg-black hover:text-white transition-all"
                   >
-                    Approve in Paybox →
+                    Approve in Action Guard →
                   </Link>
                 ) : appr.transaction_hash ? (
                   <a
