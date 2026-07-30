@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Key, Shield, AlertTriangle, Trash2, Save, Check, Zap, Cpu, Lock, Unlock, Clock, Loader2 } from 'lucide-react';
+import { Key, Shield, AlertTriangle, Trash2, Save, Check, Zap, Cpu, Lock, Unlock, Clock, Loader2, KeyRound } from 'lucide-react';
 import { usePrivy } from '@privy-io/react-auth';
 
 export default function PermissionsPage() {
@@ -13,11 +13,18 @@ export default function PermissionsPage() {
     console.warn(e);
   }
 
+  // Unlock State
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState('');
   const [unlocking, setUnlocking] = useState(false);
   const [executionUnlocked, setExecutionUnlocked] = useState(false);
   const [remainingMinutes, setRemainingMinutes] = useState(0);
+
+  // New PIN Creation State
+  const [newPin, setNewPin] = useState('');
+  const [settingPin, setSettingPin] = useState(false);
+  const [pinSuccessMsg, setPinSuccessMsg] = useState('');
+  const [createPinError, setCreatePinError] = useState('');
 
   const [autonomousEnabled, setAutonomousEnabled] = useState(false);
   const [maxAmountUsd, setMaxAmountUsd] = useState('50');
@@ -57,7 +64,7 @@ export default function PermissionsPage() {
   const handleUnlockPin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pin || pin.length < 4) {
-      setPinError('Please enter your 6-digit ArcEyes Execution PIN (Default: 123456)');
+      setPinError('Please enter your ArcEyes Execution PIN (Default: 123456)');
       return;
     }
 
@@ -82,6 +89,39 @@ export default function PermissionsPage() {
       setPinError('Error unlocking execution session');
     } finally {
       setUnlocking(false);
+    }
+  };
+
+  const handleSetCustomPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPin || newPin.length < 4) {
+      setCreatePinError('New PIN must be 4 to 6 digits');
+      return;
+    }
+
+    try {
+      setSettingPin(true);
+      setCreatePinError('');
+      setPinSuccessMsg('');
+
+      const res = await fetch('/api/execution/pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: newPin }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPinSuccessMsg('✓ Your custom ArcEyes Execution PIN has been updated!');
+        setNewPin('');
+        setTimeout(() => setPinSuccessMsg(''), 4000);
+      } else {
+        setCreatePinError(data.error || 'Failed to update PIN');
+      }
+    } catch (err: any) {
+      setCreatePinError('Error setting new execution PIN');
+    } finally {
+      setSettingPin(false);
     }
   };
 
@@ -175,6 +215,42 @@ export default function PermissionsPage() {
             </p>
           </div>
         )}
+      </div>
+
+      {/* CREATE / CHANGE CUSTOM EXECUTION PIN CARD */}
+      <div className="border border-white/30 p-6 bg-black space-y-4">
+        <div className="flex items-center space-x-3 border-b border-white/20 pb-3">
+          <KeyRound className="w-5 h-5 text-white" />
+          <h2 className="text-xl font-bold uppercase">Create / Change Your Execution PIN</h2>
+        </div>
+
+        <p className="text-xs text-white/70 leading-relaxed">
+          Set your secret 6-digit security PIN used to unlock 1-hour trading sessions for ChatGPT &amp; Claude.
+        </p>
+
+        <form onSubmit={handleSetCustomPin} className="space-y-3 max-w-md pt-2">
+          <label className="block text-xs font-bold uppercase text-white/60">New 4-6 Digit Security PIN</label>
+          <div className="flex items-center space-x-3">
+            <input
+              type="password"
+              maxLength={6}
+              value={newPin}
+              onChange={(e) => setNewPin(e.target.value)}
+              placeholder="e.g. 889900"
+              className="bg-white text-black font-mono text-lg tracking-widest border-2 border-white p-2.5 w-40 font-bold text-center"
+            />
+            <button
+              type="submit"
+              disabled={settingPin}
+              className="border-2 border-white bg-white text-black px-6 py-3 text-xs font-extrabold uppercase hover:bg-black hover:text-white transition-all flex items-center space-x-2 shrink-0 disabled:opacity-50"
+            >
+              {settingPin ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              <span>Save New PIN →</span>
+            </button>
+          </div>
+          {pinSuccessMsg && <div className="text-xs text-emerald-400 font-bold">{pinSuccessMsg}</div>}
+          {createPinError && <div className="text-xs text-rose-400 font-bold">{createPinError}</div>}
+        </form>
       </div>
 
       {/* Autonomous AI Delegated Execution Banner Card */}
