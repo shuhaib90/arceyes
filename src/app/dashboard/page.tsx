@@ -29,9 +29,10 @@ export default function DashboardOverview() {
 
   const walletAddress = user?.wallet?.address || '';
 
-  // Fetch real on-chain balance from Arc Testnet RPC
+  // Fetch real on-chain balance & sync wallet address to DB
   useEffect(() => {
     if (walletAddress) {
+      syncWalletToDB(walletAddress, user?.id);
       fetchArcBalance(walletAddress);
       fetchConnections();
     } else {
@@ -39,7 +40,19 @@ export default function DashboardOverview() {
       setConnections([]);
       setLoadingConnections(false);
     }
-  }, [walletAddress]);
+  }, [walletAddress, user?.id]);
+
+  const syncWalletToDB = async (addr: string, privyId?: string) => {
+    try {
+      await fetch('/api/wallets/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: addr, privyUserId: privyId }),
+      });
+    } catch (e) {
+      console.error('Wallet sync error:', e);
+    }
+  };
 
   const fetchArcBalance = async (addr: string) => {
     try {
