@@ -1,14 +1,23 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { usePrivy } from '@privy-io/react-auth';
 import { Eye, ArrowRight, ShieldCheck, Cpu, Zap, CheckCircle2, Copy, ExternalLink, Terminal, Sparkles } from 'lucide-react';
 
 export default function LandingPage() {
+  const router = useRouter();
   const { login, authenticated, user } = usePrivy();
   const [activeStep, setActiveStep] = useState(0);
   const [copied, setCopied] = useState(false);
+
+  // Auto redirect to dashboard once authenticated
+  useEffect(() => {
+    if (authenticated) {
+      router.push('/dashboard');
+    }
+  }, [authenticated, router]);
 
   const steps = [
     { title: 'ASK', desc: 'User speaks to ChatGPT: "Swap 10 USDC to XYZ on Arc."' },
@@ -16,12 +25,6 @@ export default function LandingPage() {
     { title: 'APPROVE', desc: 'User opens ArcEyes Paybox window & reviews transaction.' },
     { title: 'EXECUTE', desc: 'Privy embedded wallet signs; transaction broadcasts on Arc.' },
   ];
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText('0x71C7656EC7ab88b098defB751B7401B5f6d8976F');
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-white selection:text-black">
@@ -220,65 +223,6 @@ export default function LandingPage() {
             >
               Endpoint Specs →
             </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Just Ask Conversation Mockup */}
-      <section className="px-6 py-20 max-w-6xl mx-auto border-b border-white/20">
-        <div className="text-xs font-mono uppercase tracking-widest text-white/60 mb-2">03 / EXPERIENCE</div>
-        <h2 className="text-3xl sm:text-5xl font-bold uppercase mb-12">Just Ask</h2>
-
-        <div className="border-2 border-white p-6 sm:p-10 bg-black font-mono">
-          {/* User Message */}
-          <div className="flex items-start space-x-4 mb-6">
-            <div className="w-8 h-8 border border-white flex items-center justify-center text-xs font-bold bg-white text-black shrink-0">
-              YOU
-            </div>
-            <div className="border border-white/30 p-4 bg-white/5 text-sm sm:text-base max-w-lg">
-              Swap 10 USDC to XYZ on Arc.
-            </div>
-          </div>
-
-          {/* AI Message */}
-          <div className="flex items-start space-x-4 mb-8">
-            <div className="w-8 h-8 border border-white flex items-center justify-center text-xs font-bold bg-black text-white shrink-0">
-              AI
-            </div>
-            <div className="space-y-4 max-w-lg">
-              <div className="border border-white/30 p-4 bg-white/5 text-sm leading-relaxed">
-                I found the best route on ArcDEX Aggregator. 10 USDC will return approximately <span className="text-white font-bold">245 XYZ</span>.
-              </div>
-
-              {/* ArcEyes Pending Approval Card inside AI response */}
-              <div className="border-2 border-white p-5 bg-white text-black space-y-3">
-                <div className="flex items-center justify-between text-xs font-bold uppercase border-b border-black/20 pb-2">
-                  <span>👁 ARCEYES APPROVAL REQUESTED</span>
-                  <span>PENDING</span>
-                </div>
-                <div className="text-sm font-extrabold">SWAP 10 USDC &rarr; 245 XYZ</div>
-                <div className="text-xs space-y-1 text-black/80 font-mono">
-                  <div>Network: Arc Testnet</div>
-                  <div>Slippage: 0.5%</div>
-                </div>
-                <Link
-                  href="/approve/appr_demo_swap_100"
-                  className="block w-full text-center bg-black text-white py-3 text-xs uppercase font-bold border border-black hover:bg-white hover:text-black transition-all"
-                >
-                  Review &amp; Approve in ArcEyes →
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          {/* Confirmed Result Message */}
-          <div className="flex items-start space-x-4">
-            <div className="w-8 h-8 border border-white flex items-center justify-center text-xs font-bold bg-black text-white shrink-0">
-              AI
-            </div>
-            <div className="border border-white/30 p-4 bg-white/5 text-sm text-white/90">
-              ✓ Swap completed successfully on Arc EVM. 10 USDC &rarr; 245 XYZ confirmed.
-            </div>
           </div>
         </div>
       </section>
