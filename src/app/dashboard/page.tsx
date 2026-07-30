@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePrivy } from '@privy-io/react-auth';
-import { Wallet, Cpu, CheckSquare, ArrowUpRight, Copy, Check, ExternalLink, RefreshCw, QrCode, Shield, Sparkles, Lock, ArrowRight } from 'lucide-react';
+import { Cpu, CheckSquare, Copy, Check, QrCode, Lock, ArrowUpRight, Plus, ExternalLink, ShieldCheck, Activity } from 'lucide-react';
 
 export default function DashboardOverview() {
   let user: any = null;
@@ -21,305 +21,292 @@ export default function DashboardOverview() {
 
   const [copied, setCopied] = useState(false);
   const [showReceive, setShowReceive] = useState(false);
-  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  const [arcBalance, setArcBalance] = useState<string>('0.00');
+  const [loadingBalance, setLoadingBalance] = useState(false);
 
-  const walletAddress = user?.wallet?.address || '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
+  const walletAddress = user?.wallet?.address || (authenticated ? '0x71C7656EC7ab88b098defB751B7401B5f6d8976F' : '');
 
+  // Fetch real on-chain balance from Arc Testnet RPC
   useEffect(() => {
-    if (authenticated) {
-      setShowOnboardingModal(true);
+    if (walletAddress) {
+      fetchArcBalance(walletAddress);
     }
-  }, [authenticated]);
+  }, [walletAddress]);
+
+  const fetchArcBalance = async (addr: string) => {
+    try {
+      setLoadingBalance(true);
+      const res = await fetch('/api/mcp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/call',
+          params: {
+            name: 'arc_get_balance',
+            arguments: { address: addr },
+          },
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const textResult = data.result?.content?.[0]?.text;
+        if (textResult) {
+          const match = textResult.match(/([0-9.]+)\s*ARC/);
+          if (match) setArcBalance(match[1]);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingBalance(false);
+    }
+  };
 
   const handleCopy = () => {
+    if (!walletAddress) return;
     navigator.clipboard.writeText(walletAddress);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="space-y-8 font-mono">
-      {/* High-Contrast Privy Sign-In & Embedded Wallet Card */}
-      {!authenticated ? (
-        <div className="border-2 border-white p-6 sm:p-8 bg-white text-black space-y-6">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 border-b border-black/20 pb-6">
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <span className="text-xs font-bold uppercase tracking-wider bg-black text-white px-2 py-0.5">
-                  ARCEYES PRIVY AUTHENTICATION
-                </span>
-                <span className="text-xs font-bold uppercase border border-black px-2 py-0.5">
-                  ARC TESTNET
-                </span>
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold uppercase tracking-tight">
-                Sign In with Privy to Initialize Embedded Wallet
-              </h2>
-              <p className="text-xs text-black/70 max-w-xl leading-relaxed">
-                Connect via Google, Email, or Web3 wallet to provision your non-custodial embedded EVM wallet on Arc Testnet (Chain ID 763373) and manage AI agent execution.
-              </p>
-            </div>
-
-            <button
-              onClick={login}
-              className="border-2 border-black bg-black text-white px-8 py-4 text-xs font-extrabold uppercase hover:bg-white hover:text-black transition-all shrink-0 flex items-center space-x-3"
-            >
-              <Lock className="w-4 h-4" />
-              <span>Sign In / Create Wallet with Privy →</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-mono">
-            <div className="p-3 border border-black/20 bg-black/5 space-y-1">
-              <div className="font-bold uppercase">1. GOOGLE &amp; WEB3 AUTH</div>
-              <div className="text-[11px] text-black/60">Instant login with zero seed phrase hassle</div>
-            </div>
-            <div className="p-3 border border-black/20 bg-black/5 space-y-1">
-              <div className="font-bold uppercase">2. EMBEDDED EVM WALLET</div>
-              <div className="text-[11px] text-black/60">Non-custodial key provisioned on Arc Testnet</div>
-            </div>
-            <div className="p-3 border border-black/20 bg-black/5 space-y-1">
-              <div className="font-bold uppercase">3. REMOTE MCP AI ACCESS</div>
-              <div className="text-[11px] text-black/60">Authorize ChatGPT &amp; Claude tool execution</div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* Connected Privy Wallet Card */
-        <div className="border-2 border-white p-6 bg-black space-y-4">
-          <div className="flex items-center justify-between border-b border-white/20 pb-3">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 border border-white bg-white text-black flex items-center justify-center font-bold text-lg">👁</div>
-              <div>
-                <h2 className="text-xl font-bold uppercase">Privy Embedded Wallet Active</h2>
-                <div className="text-[10px] text-white/60">Authenticated via Privy &bull; Arc Testnet (763373)</div>
-              </div>
-            </div>
-            <span className="text-xs bg-white text-black font-extrabold px-3 py-1 uppercase">AUTHENTICATED</span>
-          </div>
-
-          <div className="p-4 border border-white font-mono text-sm font-bold bg-white/10 text-white break-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div>
-              <div className="text-[10px] text-white/50 uppercase">WALLET ADDRESS</div>
-              <span className="text-base">{walletAddress}</span>
-            </div>
-            <button onClick={handleCopy} className="border border-white bg-white text-black px-4 py-2 text-xs uppercase font-bold shrink-0 hover:bg-black hover:text-white transition-all">
-              {copied ? 'Copied' : 'Copy Address'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Onboarding Ready Confirmation Modal */}
-      {showOnboardingModal && authenticated && (
-        <div className="border-2 border-white p-6 bg-black space-y-4">
-          <div className="flex items-center justify-between border-b border-white/20 pb-3">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 border border-white bg-white text-black flex items-center justify-center font-bold text-lg">👁</div>
-              <h2 className="text-xl font-bold uppercase">Your ArcEyes Wallet is Ready</h2>
-            </div>
-            <button onClick={() => setShowOnboardingModal(false)} className="text-xs text-white/60 hover:text-white">✕ Dismiss</button>
-          </div>
-
-          <p className="text-xs text-white/70">
-            Privy Google authentication complete. Your embedded EVM wallet has been generated on Arc Testnet:
-          </p>
-
-          <div className="p-3 border border-white font-mono text-sm font-bold bg-white/10 text-white break-all flex items-center justify-between">
-            <span>{walletAddress}</span>
-            <button onClick={handleCopy} className="border border-white bg-white text-black px-3 py-1 text-xs uppercase font-bold shrink-0">
-              {copied ? 'Copied' : 'Copy Address'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Top Banner Header */}
+    <div className="space-y-8 font-mono text-white">
+      {/* Top Banner Header (PayBox Inspired) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/20 pb-6">
         <div>
           <h1 className="text-3xl font-extrabold uppercase tracking-tight">Overview</h1>
-          <p className="text-xs text-white/60 mt-1">ArcEyes Agentic Wallet &bull; Active on Arc Testnet</p>
+          <p className="text-xs text-white/60 mt-1">Your credential vault &amp; agentic wallet for AI agents</p>
         </div>
         <div className="flex items-center space-x-3">
+          <span className="flex items-center space-x-2 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 font-bold uppercase">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>All Clear</span>
+          </span>
           <Link
             href="/dashboard/connections"
-            className="border border-white bg-white text-black text-xs font-bold uppercase px-4 py-2 hover:bg-black hover:text-white transition-all"
+            className="border border-white bg-white text-black text-xs font-bold uppercase px-4 py-2 hover:bg-black hover:text-white transition-all flex items-center space-x-2"
           >
-            + Connect AI Client
+            <Plus className="w-3.5 h-3.5" />
+            <span>New Agent</span>
           </Link>
         </div>
       </div>
 
-      {/* Grid: Portfolio & Wallet Info Cards */}
+      {/* Privy Sign-In Card if unauthenticated */}
+      {!authenticated && (
+        <div className="border-2 border-white p-6 sm:p-8 bg-white text-black space-y-4">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <span className="text-xs font-bold uppercase tracking-wider bg-black text-white px-2 py-0.5">
+                  PRIVY AUTHENTICATION
+                </span>
+                <span className="text-xs font-bold uppercase border border-black px-2 py-0.5">
+                  ARC TESTNET (763373)
+                </span>
+              </div>
+              <h2 className="text-2xl font-extrabold uppercase">Sign In to Provision Embedded EVM Wallet</h2>
+              <p className="text-xs text-black/70 max-w-xl">
+                Authenticate with Google or Web3 wallet to connect AI agents like ChatGPT and Claude to your ArcEyes wallet.
+              </p>
+            </div>
+            <button
+              onClick={login}
+              className="border-2 border-black bg-black text-white px-8 py-3.5 text-xs font-extrabold uppercase hover:bg-white hover:text-black transition-all shrink-0 flex items-center space-x-2"
+            >
+              <Lock className="w-4 h-4" />
+              <span>Connect with Privy →</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Main Overview Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Portfolio Card */}
-        <div className="lg:col-span-2 border-2 border-white p-6 bg-black space-y-6">
+        {/* Activity Weekly Overview Card */}
+        <div className="lg:col-span-2 border border-white/30 p-6 bg-black space-y-6 flex flex-col justify-between">
           <div className="flex items-center justify-between border-b border-white/20 pb-4">
-            <span className="text-xs text-white/60 uppercase">TOTAL PORTFOLIO VALUE</span>
-            <span className="text-xs bg-white/10 px-2 py-0.5 border border-white/20 font-bold">ARC TESTNET</span>
+            <div className="flex items-center space-x-2">
+              <Activity className="w-4 h-4 text-white" />
+              <span className="font-bold text-sm uppercase">Activity Log</span>
+            </div>
+            <span className="text-[11px] text-white/50">Last 7 days</span>
           </div>
 
-          <div>
-            <div className="text-4xl sm:text-5xl font-extrabold text-white">$260.53</div>
-            <div className="text-xs text-white/60 mt-1">≈ 14.50 ARC + 125.00 USDC + 2,450 XYZ</div>
+          <div className="space-y-4">
+            <div className="flex items-baseline space-x-3">
+              <span className="text-4xl font-extrabold text-white">0</span>
+              <span className="text-xs text-white/60 uppercase font-bold">events this week</span>
+            </div>
+
+            {/* Weekly Bar Graph Placeholder */}
+            <div className="grid grid-cols-7 gap-2 pt-4 items-end h-24 border-b border-white/10 pb-2 text-center text-[10px] text-white/40">
+              {['Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Today'].map((day, idx) => (
+                <div key={day} className="flex flex-col items-center justify-end h-full space-y-2">
+                  <div className={`w-full ${idx === 6 ? 'h-16 bg-emerald-500' : 'h-1 bg-white/10'}`}></div>
+                  <span>{day}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Token Breakdown Table */}
-          <div className="space-y-2 pt-2 text-xs">
-            <div className="flex justify-between border-b border-white/10 pb-2 text-white/60 font-bold">
-              <span>ASSET</span>
-              <span>BALANCE</span>
-              <span>USD VALUE</span>
-            </div>
-            <div className="flex justify-between py-1.5 border-b border-white/10">
-              <span className="font-bold">ARC (Native)</span>
-              <span>14.5000 ARC</span>
-              <span>$35.53</span>
-            </div>
-            <div className="flex justify-between py-1.5 border-b border-white/10">
-              <span className="font-bold">USDC (Arc)</span>
-              <span>125.0000 USDC</span>
-              <span>$125.00</span>
-            </div>
-            <div className="flex justify-between py-1.5">
-              <span className="font-bold">XYZ Token</span>
-              <span>2,450.0000 XYZ</span>
-              <span>$100.00</span>
-            </div>
+          <div className="flex items-center justify-between text-xs text-white/50 pt-2">
+            <span>● Activity</span>
+            <Link href="/dashboard/activity" className="text-white hover:underline font-bold">
+              View all activity →
+            </Link>
           </div>
         </div>
 
-        {/* Wallet Address Card */}
-        <div className="border border-white/30 p-6 bg-black flex flex-col justify-between space-y-6">
-          <div className="space-y-4">
-            <div className="text-xs text-white/60 uppercase">EMBEDDED PRIVY WALLET</div>
-            <div className="p-3 border border-white bg-white/5 space-y-2">
-              <div className="text-[11px] text-white/50">ADDRESS</div>
-              <div className="font-bold text-sm text-white break-all">{walletAddress}</div>
+        {/* Connected AI Agents Card (PayBox Style) */}
+        <div className="border border-white/30 p-6 bg-black space-y-6 flex flex-col justify-between">
+          <div className="flex items-center justify-between border-b border-white/20 pb-4">
+            <div className="flex items-center space-x-2">
+              <Cpu className="w-4 h-4 text-white" />
+              <span className="font-bold text-sm uppercase">Connected Agents</span>
+            </div>
+            <Link href="/dashboard/connections" className="text-xs text-white/60 hover:text-white underline">
+              View all →
+            </Link>
+          </div>
+
+          <div className="space-y-3">
+            <div className="p-4 border border-white/20 bg-white/5 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-sm text-white">ChatGPT (via OAuth)</span>
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 border border-emerald-500/30 uppercase font-bold">
+                  ACTIVE
+                </span>
+              </div>
+              <div className="text-[11px] text-white/50 font-mono">
+                MCP OAuth Server &bull; 8 Grants &bull; Arc Testnet
+              </div>
+            </div>
+
+            <div className="p-4 border border-white/20 bg-white/5 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-sm text-white">Claude (via MCP)</span>
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 border border-emerald-500/30 uppercase font-bold">
+                  ACTIVE
+                </span>
+              </div>
+              <div className="text-[11px] text-white/50 font-mono">
+                Remote Stream &bull; 5 Grants &bull; Arc Testnet
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={handleCopy}
-              className="border border-white py-2.5 text-xs font-bold uppercase hover:bg-white hover:text-black transition-all flex items-center justify-center space-x-2"
-            >
-              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              <span>{copied ? 'Copied' : 'Copy'}</span>
-            </button>
-            <button
-              onClick={() => setShowReceive(!showReceive)}
-              className="border border-white bg-white text-black py-2.5 text-xs font-bold uppercase hover:bg-black hover:text-white transition-all flex items-center justify-center space-x-2"
-            >
-              <QrCode className="w-4 h-4" />
-              <span>Receive</span>
-            </button>
+          <Link
+            href="/dashboard/connections"
+            className="block text-center border border-white py-2.5 text-xs font-bold uppercase hover:bg-white hover:text-black transition-all"
+          >
+            + Connect New Agent
+          </Link>
+        </div>
+      </div>
+
+      {/* Credentials / Wallets Section (PayBox Inspired) */}
+      <div className="border border-white/30 p-6 bg-black space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/20 pb-4">
+          <div>
+            <span className="text-xs text-white/60 uppercase">Vault Credentials</span>
+            <div className="text-3xl font-extrabold text-white mt-1">
+              {loadingBalance ? 'Loading...' : `${arcBalance} ARC`}
+              <span className="text-xs text-white/50 font-normal ml-3">across your wallets</span>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setShowReceive(true)}
+            className="border border-white bg-white text-black px-5 py-2.5 text-xs font-extrabold uppercase hover:bg-black hover:text-white transition-all flex items-center space-x-2 shrink-0"
+          >
+            <QrCode className="w-4 h-4" />
+            <span>+ Fund / Receive</span>
+          </button>
+        </div>
+
+        {/* Wallets List */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="p-5 border border-white/30 bg-white/5 space-y-4 flex flex-col justify-between">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-sm uppercase">evm-default</span>
+                <span className="text-[10px] text-white/50 uppercase border border-white/20 px-2 py-0.5">PRIVY EVM</span>
+              </div>
+              <div className="text-[11px] text-white/50">Arc Testnet (Chain ID 763373)</div>
+              {walletAddress ? (
+                <div className="p-2 bg-black border border-white/20 text-xs font-mono font-bold break-all">
+                  {walletAddress}
+                </div>
+              ) : (
+                <div className="text-xs text-white/40 italic">Sign in with Privy to view wallet</div>
+              )}
+            </div>
+
+            <div className="flex items-center space-x-2 pt-2 border-t border-white/10">
+              <button
+                onClick={handleCopy}
+                disabled={!walletAddress}
+                className="flex-1 border border-white/40 py-2 text-[11px] font-bold uppercase hover:border-white disabled:opacity-30 transition-all flex items-center justify-center space-x-1"
+              >
+                {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                <span>{copied ? 'Copied' : 'Copy'}</span>
+              </button>
+              <button
+                onClick={() => setShowReceive(true)}
+                className="flex-1 border border-white bg-white text-black py-2 text-[11px] font-extrabold uppercase hover:bg-black hover:text-white transition-all"
+              >
+                Fund Wallet
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Receive Modal */}
       {showReceive && (
-        <div className="border-2 border-white p-6 bg-black space-y-4">
+        <div className="border-2 border-white p-6 bg-black space-y-4 max-w-lg mx-auto">
           <div className="flex items-center justify-between border-b border-white/20 pb-3">
-            <span className="font-bold text-sm uppercase">Receive Testnet Funds</span>
-            <button onClick={() => setShowReceive(false)} className="text-white/60 hover:text-white">✕</button>
+            <span className="font-bold text-sm uppercase">Fund EVM Wallet</span>
+            <button onClick={() => setShowReceive(false)} className="text-white/60 hover:text-white text-sm">✕</button>
           </div>
           <p className="text-xs text-white/70">
-            Send native ARC or ERC20 testnet tokens to your ArcEyes wallet address on Arc Testnet (Chain ID 763373):
+            Deposit native ARC or testnet ERC20 tokens to your embedded wallet on Arc Testnet (763373):
           </p>
-          <div className="p-3 border border-white font-mono text-sm font-bold bg-white text-black break-all text-center">
-            {walletAddress}
+          <div className="p-3 border border-white font-mono text-xs font-bold bg-white text-black break-all text-center">
+            {walletAddress || '0x71C7656EC7ab88b098defB751B7401B5f6d8976F'}
           </div>
+          <a
+            href="https://faucet.testnet.arc.network"
+            target="_blank"
+            rel="noreferrer"
+            className="block text-center border border-white py-2.5 text-xs font-bold uppercase hover:bg-white hover:text-black transition-all"
+          >
+            Open Arc Testnet Faucet ↗
+          </a>
         </div>
       )}
 
-      {/* AI Connections & Pending Approvals Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* AI Connections Summary */}
-        <div className="border border-white/30 p-6 bg-black space-y-4">
-          <div className="flex items-center justify-between border-b border-white/20 pb-3">
-            <div className="flex items-center space-x-2">
-              <Cpu className="w-4 h-4" />
-              <span className="font-bold text-sm uppercase">AI Connections</span>
-            </div>
-            <Link href="/dashboard/connections" className="text-xs underline text-white/70 hover:text-white">
-              Manage →
-            </Link>
-          </div>
-
-          <div className="space-y-3">
-            <div className="p-3 border border-white/20 flex items-center justify-between bg-white/5">
-              <div>
-                <div className="font-bold text-sm uppercase">ChatGPT (OpenAI MCP)</div>
-                <div className="text-[11px] text-white/60">8 Scopes Enabled &bull; Active</div>
-              </div>
-              <span className="text-xs font-bold bg-white text-black px-2 py-0.5 uppercase">CONNECTED</span>
-            </div>
-
-            <div className="p-3 border border-white/20 flex items-center justify-between bg-white/5">
-              <div>
-                <div className="font-bold text-sm uppercase">Claude (Anthropic)</div>
-                <div className="text-[11px] text-white/60">5 Scopes Enabled &bull; Active</div>
-              </div>
-              <span className="text-xs font-bold bg-white text-black px-2 py-0.5 uppercase">CONNECTED</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Pending Approvals Card */}
-        <div className="border-2 border-white p-6 bg-black space-y-4">
-          <div className="flex items-center justify-between border-b border-white/20 pb-3">
-            <div className="flex items-center space-x-2">
-              <CheckSquare className="w-4 h-4 text-white" />
-              <span className="font-bold text-sm uppercase">Pending Approvals</span>
-            </div>
-            <span className="text-xs font-bold bg-white text-black px-2 py-0.5">1 PENDING</span>
-          </div>
-
-          <div className="p-4 border border-white bg-white/5 space-y-3">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold uppercase text-white">SWAP 10.00 USDC &rarr; 245.00 XYZ</span>
-              <span className="text-[10px] text-white/60">ChatGPT</span>
-            </div>
-            <div className="text-[11px] text-white/70">
-              Protocol: ArcDEX Aggregator &bull; Slippage: 0.5% &bull; Chain ID: 763373
-            </div>
-            <Link
-              href="/approve/appr_demo_swap_100"
-              className="block w-full text-center border border-white bg-white text-black py-2.5 text-xs font-extrabold uppercase hover:bg-black hover:text-white transition-all"
-            >
-              Review &amp; Approve in Paybox →
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent AI Activity Timeline */}
+      {/* Pending Approvals Section */}
       <div className="border border-white/30 p-6 bg-black space-y-4">
         <div className="flex items-center justify-between border-b border-white/20 pb-3">
-          <span className="font-bold text-sm uppercase">Recent AI Activity</span>
-          <Link href="/dashboard/activity" className="text-xs underline text-white/70 hover:text-white">
-            View All Activity →
+          <div className="flex items-center space-x-2">
+            <CheckSquare className="w-4 h-4 text-white" />
+            <span className="font-bold text-sm uppercase">Pending Approvals</span>
+          </div>
+          <Link href="/dashboard/approvals" className="text-xs underline text-white/70 hover:text-white">
+            View all →
           </Link>
         </div>
 
-        <div className="space-y-3 text-xs">
-          <div className="p-3 border border-white/10 flex items-center justify-between bg-white/5">
-            <div className="space-y-0.5">
-              <div className="font-bold text-white uppercase">ChatGPT queried native ARC balance</div>
-              <div className="text-white/60">Tool arc_get_wallet returned 0x71C7656EC7ab88b098defB751B7401B5f6d8976F</div>
-            </div>
-            <span className="text-[10px] text-white/50 shrink-0">Just now</span>
-          </div>
-
-          <div className="p-3 border border-white/10 flex items-center justify-between bg-white/5">
-            <div className="space-y-0.5">
-              <div className="font-bold text-white uppercase">ChatGPT created swap approval</div>
-              <div className="text-white/60">Prepared 10 USDC &rarr; 245 XYZ swap request (Approval ID: appr_demo_swap_100)</div>
-            </div>
-            <span className="text-[10px] text-white/50 shrink-0">18m ago</span>
-          </div>
+        <div className="p-8 border border-white/20 bg-white/5 text-center space-y-3">
+          <ShieldCheck className="w-8 h-8 text-white/40 mx-auto" />
+          <div className="text-sm font-bold uppercase">No Pending Approvals</div>
+          <p className="text-xs text-white/50 max-w-md mx-auto">
+            All AI agent transaction requests have been evaluated. When an AI agent submits a new transaction requiring user consent, it will appear here for signing.
+          </p>
         </div>
       </div>
     </div>

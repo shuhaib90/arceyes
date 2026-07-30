@@ -45,11 +45,13 @@ class ArcEyesDB {
 
     if (this.wallets.has(userId)) return this.wallets.get(userId)!;
 
+    if (!userAddress) return null;
+
     const defaultWallet: Wallet = {
       id: `wlt_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       user_id: userId,
       privy_wallet_id: `pwlt_${Date.now()}`,
-      address: userAddress || '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
+      address: userAddress,
       chain_id: 763373,
       created_at: new Date().toISOString(),
     };
@@ -65,31 +67,9 @@ class ArcEyesDB {
   async getConnections(userId: string): Promise<AIConnection[]> {
     if (supabaseServer) {
       const { data } = await supabaseServer.from('ai_connections').select('*').eq('user_id', userId);
-      if (data && data.length > 0) return data as AIConnection[];
+      if (data) return data as AIConnection[];
     }
-
-    const userConns = Array.from(this.connections.values()).filter((c) => c.user_id === userId);
-    if (userConns.length > 0) return userConns;
-
-    // Default connection template for active user session
-    const defaultChatgpt: AIConnection = {
-      id: `conn_chatgpt_${Date.now()}`,
-      user_id: userId,
-      provider: 'chatgpt',
-      client_id: 'chatgpt_app_client',
-      status: 'active',
-      scopes: ['wallet:read', 'balance:read', 'portfolio:read', 'trade:quote', 'trade:prepare', 'transaction:prepare', 'nft:read', 'defi:read'],
-      autonomous_enabled: false,
-      max_auto_amount_usd: 50,
-      created_at: new Date().toISOString(),
-      last_used_at: new Date().toISOString(),
-    };
-
-    if (supabaseServer) {
-      await supabaseServer.from('ai_connections').insert(defaultChatgpt);
-    }
-    this.connections.set(defaultChatgpt.id, defaultChatgpt);
-    return [defaultChatgpt];
+    return Array.from(this.connections.values()).filter((c) => c.user_id === userId);
   }
 
   async updateConnectionScopes(connectionId: string, scopes: string[]): Promise<AIConnection | null> {
@@ -263,15 +243,13 @@ class ArcEyesDB {
       const { data } = await supabaseServer.from('nft_status').select('*').eq('user_id', userId).single();
       if (data) return data as NFTStatus;
     }
-    return (
-      this.nftStatuses.get(userId) || {
-        user_id: userId,
-        wallet_address: walletAddress || '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-        owns_arceyes: false,
-        token_ids: [],
-        last_checked_at: new Date().toISOString(),
-      }
-    );
+    return {
+      user_id: userId,
+      wallet_address: walletAddress || '',
+      owns_arceyes: false,
+      token_ids: [],
+      last_checked_at: new Date().toISOString(),
+    };
   }
 }
 
