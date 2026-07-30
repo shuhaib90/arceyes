@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePrivy } from '@privy-io/react-auth';
-import { Cpu, CheckSquare, Copy, Check, QrCode, Lock, ArrowUpRight, Plus, ExternalLink, ShieldCheck, Activity } from 'lucide-react';
+import { Cpu, CheckSquare, Copy, Check, QrCode, Lock, Plus, ShieldCheck, Activity } from 'lucide-react';
+import { AIConnection } from '@/lib/supabase/types';
 
 export default function DashboardOverview() {
   let user: any = null;
@@ -21,46 +22,69 @@ export default function DashboardOverview() {
 
   const [copied, setCopied] = useState(false);
   const [showReceive, setShowReceive] = useState(false);
-  const [arcBalance, setArcBalance] = useState<string>('0.00');
+  const [arcBalance, setArcBalance] = useState<string>('0.0000');
   const [loadingBalance, setLoadingBalance] = useState(false);
+  const [connections, setConnections] = useState<AIConnection[]>([]);
+  const [loadingConnections, setLoadingConnections] = useState(true);
 
-  const walletAddress = user?.wallet?.address || (authenticated ? '0x71C7656EC7ab88b098defB751B7401B5f6d8976F' : '');
+  const walletAddress = user?.wallet?.address || '';
 
   // Fetch real on-chain balance from Arc Testnet RPC
   useEffect(() => {
     if (walletAddress) {
       fetchArcBalance(walletAddress);
+      fetchConnections();
+    } else {
+      setArcBalance('0.0000');
+      setConnections([]);
+      setLoadingConnections(false);
     }
   }, [walletAddress]);
 
   const fetchArcBalance = async (addr: string) => {
     try {
       setLoadingBalance(true);
-      const res = await fetch('/api/mcp', {
+      const res = await fetch('https://rpc.testnet.arc.network', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           jsonrpc: '2.0',
           id: 1,
-          method: 'tools/call',
-          params: {
-            name: 'arc_get_balance',
-            arguments: { address: addr },
-          },
+          method: 'eth_getBalance',
+          params: [addr, 'latest'],
         }),
       });
       if (res.ok) {
         const data = await res.json();
-        const textResult = data.result?.content?.[0]?.text;
-        if (textResult) {
-          const match = textResult.match(/([0-9.]+)\s*ARC/);
-          if (match) setArcBalance(match[1]);
+        if (data.result) {
+          const wei = BigInt(data.result);
+          const arc = Number(wei) / 1e18;
+          setArcBalance(arc.toFixed(4));
         }
       }
     } catch (e) {
-      console.error(e);
+      console.error('RPC Balance Fetch Error:', e);
+      setArcBalance('0.0000');
     } finally {
       setLoadingBalance(false);
+    }
+  };
+
+  const fetchConnections = async () => {
+    try {
+      setLoadingConnections(true);
+      const res = await fetch('/api/connections');
+      if (res.ok) {
+        const data = await res.json();
+        setConnections(data || []);
+      } else {
+        setConnections([]);
+      }
+    } catch (e) {
+      console.error(e);
+      setConnections([]);
+    } finally {
+      setLoadingConnections(false);
     }
   };
 
@@ -141,7 +165,7 @@ export default function DashboardOverview() {
               <span className="text-xs text-white/60 uppercase font-bold">events this week</span>
             </div>
 
-            {/* Weekly Bar Graph Placeholder */}
+            {/* Weekly Bar Graph View */}
             <div className="grid grid-cols-7 gap-2 pt-4 items-end h-24 border-b border-white/10 pb-2 text-center text-[10px] text-white/40">
               {['Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Today'].map((day, idx) => (
                 <div key={day} className="flex flex-col items-center justify-end h-full space-y-2">
@@ -160,7 +184,7 @@ export default function DashboardOverview() {
           </div>
         </div>
 
-        {/* Connected AI Agents Card (PayBox Style) */}
+        {/* Connected AI Agents Card (Real Database Query) */}
         <div className="border border-white/30 p-6 bg-black space-y-6 flex flex-col justify-between">
           <div className="flex items-center justify-between border-b border-white/20 pb-4">
             <div className="flex items-center space-x-2">
@@ -173,29 +197,30 @@ export default function DashboardOverview() {
           </div>
 
           <div className="space-y-3">
-            <div className="p-4 border border-white/20 bg-white/5 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-sm text-white">ChatGPT (via OAuth)</span>
-                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 border border-emerald-500/30 uppercase font-bold">
-                  ACTIVE
-                </span>
+            {loadingConnections ? (
+              <div className="p-6 text-center text-xs text-white/40 italic">Checking active AI connections...</div>
+            ) : connections.length > 0 ? (
+              connections.map((conn) => (
+                <div key={conn.id} className="p-4 border border-white/20 bg-white/5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-sm text-white uppercase">{conn.provider} Agent</span>
+                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 border border-emerald-500/30 uppercase font-bold">
+                      {conn.status}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-white/50 font-mono">
+                    {conn.scopes.length} Scopes &bull; Arc Testnet
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="p-6 border border-white/20 bg-white/5 text-center space-y-3">
+                <div className="font-bold text-xs uppercase text-white/70">No Agents Connected</div>
+                <p className="text-[11px] text-white/50 max-w-xs mx-auto">
+                  Connect ChatGPT or Claude via MCP to grant agentic wallet permissions.
+                </p>
               </div>
-              <div className="text-[11px] text-white/50 font-mono">
-                MCP OAuth Server &bull; 8 Grants &bull; Arc Testnet
-              </div>
-            </div>
-
-            <div className="p-4 border border-white/20 bg-white/5 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-sm text-white">Claude (via MCP)</span>
-                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 border border-emerald-500/30 uppercase font-bold">
-                  ACTIVE
-                </span>
-              </div>
-              <div className="text-[11px] text-white/50 font-mono">
-                Remote Stream &bull; 5 Grants &bull; Arc Testnet
-              </div>
-            </div>
+            )}
           </div>
 
           <Link
@@ -213,7 +238,7 @@ export default function DashboardOverview() {
           <div>
             <span className="text-xs text-white/60 uppercase">Vault Credentials</span>
             <div className="text-3xl font-extrabold text-white mt-1">
-              {loadingBalance ? 'Loading...' : `${arcBalance} ARC`}
+              {loadingBalance ? '0.0000 ARC' : `${arcBalance} ARC`}
               <span className="text-xs text-white/50 font-normal ml-3">across your wallets</span>
             </div>
           </div>
@@ -276,7 +301,7 @@ export default function DashboardOverview() {
             Deposit native ARC or testnet ERC20 tokens to your embedded wallet on Arc Testnet (763373):
           </p>
           <div className="p-3 border border-white font-mono text-xs font-bold bg-white text-black break-all text-center">
-            {walletAddress || '0x71C7656EC7ab88b098defB751B7401B5f6d8976F'}
+            {walletAddress || 'Not Connected'}
           </div>
           <a
             href="https://faucet.testnet.arc.network"

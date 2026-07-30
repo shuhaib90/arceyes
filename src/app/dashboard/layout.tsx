@@ -11,9 +11,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [copied, setCopied] = useState(false);
   const [testMode, setTestMode] = useState(true);
 
-  const { user, authenticated, login, logout } = usePrivy();
+  let user: any = null;
+  let authenticated = false;
+  let login = () => {};
+  let logout = () => {};
 
-  const walletAddress = user?.wallet?.address || '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
+  try {
+    const privy = usePrivy();
+    user = privy.user;
+    authenticated = privy.authenticated;
+    login = privy.login;
+    logout = privy.logout;
+  } catch (e) {
+    console.warn('Privy hook fallback:', e);
+  }
+
+  const walletAddress = user?.wallet?.address || '';
 
   const navItems = [
     { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
@@ -26,6 +39,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   ];
 
   const handleCopy = () => {
+    if (!walletAddress) return;
     navigator.clipboard.writeText(walletAddress);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -51,10 +65,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <span className="text-white font-bold">ARC TESTNET</span>
             </div>
             <div className="flex items-center justify-between bg-black p-2 border border-white/30 text-xs font-bold">
-              <span>{walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</span>
-              <button onClick={handleCopy} className="hover:text-white text-white/70">
-                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              </button>
+              {walletAddress ? (
+                <>
+                  <span>{walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</span>
+                  <button onClick={handleCopy} className="hover:text-white text-white/70">
+                    {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                </>
+              ) : (
+                <span className="text-white/40 italic">Not Connected</span>
+              )}
             </div>
           </div>
 
