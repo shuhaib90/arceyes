@@ -3,10 +3,22 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePrivy } from '@privy-io/react-auth';
-import { Wallet, Cpu, CheckSquare, ArrowUpRight, Copy, Check, ExternalLink, RefreshCw, QrCode, Shield, Sparkles, ArrowRight } from 'lucide-react';
+import { Wallet, Cpu, CheckSquare, ArrowUpRight, Copy, Check, ExternalLink, RefreshCw, QrCode, Shield, Sparkles, Lock, ArrowRight } from 'lucide-react';
 
 export default function DashboardOverview() {
-  const { user, authenticated, login } = usePrivy();
+  let user: any = null;
+  let authenticated = false;
+  let login = () => {};
+
+  try {
+    const privy = usePrivy();
+    user = privy.user;
+    authenticated = privy.authenticated;
+    login = privy.login;
+  } catch (e) {
+    console.warn('Privy hook fallback:', e);
+  }
+
   const [copied, setCopied] = useState(false);
   const [showReceive, setShowReceive] = useState(false);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
@@ -14,7 +26,6 @@ export default function DashboardOverview() {
   const walletAddress = user?.wallet?.address || '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
 
   useEffect(() => {
-    // Show onboarding confirmation if newly logged in
     if (authenticated) {
       setShowOnboardingModal(true);
     }
@@ -28,19 +39,72 @@ export default function DashboardOverview() {
 
   return (
     <div className="space-y-8 font-mono">
-      {/* Sign-In Prompt Banner if not authenticated */}
-      {!authenticated && (
-        <div className="border-2 border-white p-6 bg-white text-black space-y-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <div className="text-xs font-bold uppercase tracking-wider text-black/60">INITIALIZE ARCEYES WALLET</div>
-              <h2 className="text-2xl font-extrabold uppercase">Sign in with Google to Connect Your Embedded Wallet</h2>
+      {/* High-Contrast Privy Sign-In & Embedded Wallet Card */}
+      {!authenticated ? (
+        <div className="border-2 border-white p-6 sm:p-8 bg-white text-black space-y-6">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 border-b border-black/20 pb-6">
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <span className="text-xs font-bold uppercase tracking-wider bg-black text-white px-2 py-0.5">
+                  ARCEYES PRIVY AUTHENTICATION
+                </span>
+                <span className="text-xs font-bold uppercase border border-black px-2 py-0.5">
+                  ARC TESTNET
+                </span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold uppercase tracking-tight">
+                Sign In with Privy to Initialize Embedded Wallet
+              </h2>
+              <p className="text-xs text-black/70 max-w-xl leading-relaxed">
+                Connect via Google, Email, or Web3 wallet to provision your non-custodial embedded EVM wallet on Arc Testnet (Chain ID 763373) and manage AI agent execution.
+              </p>
             </div>
+
             <button
               onClick={login}
-              className="border-2 border-black bg-black text-white px-8 py-3 text-xs font-extrabold uppercase hover:bg-white hover:text-black transition-all shrink-0"
+              className="border-2 border-black bg-black text-white px-8 py-4 text-xs font-extrabold uppercase hover:bg-white hover:text-black transition-all shrink-0 flex items-center space-x-3"
             >
-              Continue with Google →
+              <Lock className="w-4 h-4" />
+              <span>Sign In / Create Wallet with Privy →</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-mono">
+            <div className="p-3 border border-black/20 bg-black/5 space-y-1">
+              <div className="font-bold uppercase">1. GOOGLE &amp; WEB3 AUTH</div>
+              <div className="text-[11px] text-black/60">Instant login with zero seed phrase hassle</div>
+            </div>
+            <div className="p-3 border border-black/20 bg-black/5 space-y-1">
+              <div className="font-bold uppercase">2. EMBEDDED EVM WALLET</div>
+              <div className="text-[11px] text-black/60">Non-custodial key provisioned on Arc Testnet</div>
+            </div>
+            <div className="p-3 border border-black/20 bg-black/5 space-y-1">
+              <div className="font-bold uppercase">3. REMOTE MCP AI ACCESS</div>
+              <div className="text-[11px] text-black/60">Authorize ChatGPT &amp; Claude tool execution</div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Connected Privy Wallet Card */
+        <div className="border-2 border-white p-6 bg-black space-y-4">
+          <div className="flex items-center justify-between border-b border-white/20 pb-3">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 border border-white bg-white text-black flex items-center justify-center font-bold text-lg">👁</div>
+              <div>
+                <h2 className="text-xl font-bold uppercase">Privy Embedded Wallet Active</h2>
+                <div className="text-[10px] text-white/60">Authenticated via Privy &bull; Arc Testnet (763373)</div>
+              </div>
+            </div>
+            <span className="text-xs bg-white text-black font-extrabold px-3 py-1 uppercase">AUTHENTICATED</span>
+          </div>
+
+          <div className="p-4 border border-white font-mono text-sm font-bold bg-white/10 text-white break-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <div className="text-[10px] text-white/50 uppercase">WALLET ADDRESS</div>
+              <span className="text-base">{walletAddress}</span>
+            </div>
+            <button onClick={handleCopy} className="border border-white bg-white text-black px-4 py-2 text-xs uppercase font-bold shrink-0 hover:bg-black hover:text-white transition-all">
+              {copied ? 'Copied' : 'Copy Address'}
             </button>
           </div>
         </div>
