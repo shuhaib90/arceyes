@@ -1,5 +1,15 @@
 import { NextResponse } from 'next/server';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const clientId = searchParams.get('client_id') || 'chatgpt';
@@ -24,11 +34,14 @@ export async function POST(req: Request) {
     const code = `code_arceyes_${Math.random().toString(36).substring(2, 12)}`;
     const redirectTarget = `${redirect_uri}?code=${code}&state=${encodeURIComponent(state || '')}`;
 
-    return NextResponse.json({
-      code,
-      redirect_url: redirectTarget,
-    });
+    return NextResponse.json(
+      {
+        code,
+        redirect_url: redirectTarget,
+      },
+      { headers: corsHeaders }
+    );
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Authorization failed' }, { status: 400 });
+    return NextResponse.json({ error: err.message || 'Authorization failed' }, { status: 400, headers: corsHeaders });
   }
 }
