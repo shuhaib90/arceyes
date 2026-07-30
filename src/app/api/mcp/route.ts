@@ -6,12 +6,39 @@ import { handleGetNFTs } from '@/lib/mcp/tools/nfts';
 import { handleGetDeFiPositions } from '@/lib/mcp/tools/defi';
 import { handleGetApprovalStatus } from '@/lib/mcp/tools/approvals';
 import { getNetworkStatus } from '@/lib/arc/client';
+import { getCurrentUserSession } from '@/lib/privy/auth';
+import { db } from '@/lib/supabase/db';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
 };
+
+// Auto log or update active AI connection in Supabase DB
+async function recordActiveConnection(req: Request) {
+  try {
+    const userAgent = (req.headers.get('user-agent') || '').toLowerCase();
+    const provider = userAgent.includes('claude') || userAgent.includes('anthropic') ? 'claude' : 'chatgpt';
+
+    const session = await getCurrentUserSession();
+    if (session && session.userId) {
+      const existingConns = await db.getConnections(session.userId);
+      const activeConn = existingConns.find((c) => c.provider === provider);
+      if (!activeConn) {
+        await db.createAIConnection(session.userId, provider, `${provider}_mcp_client`, [
+          'wallet:read',
+          'balance:read',
+          'portfolio:read',
+          'trade:quote',
+          'trade:prepare',
+        ]);
+      }
+    }
+  } catch (e) {
+    console.error('Record connection error:', e);
+  }
+}
 
 export async function OPTIONS() {
   return new NextResponse(null, {
@@ -20,7 +47,9 @@ export async function OPTIONS() {
   });
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  await recordActiveConnection(req);
+
   return NextResponse.json(
     {
       name: 'arceyes-mcp-server',
@@ -39,6 +68,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    await recordActiveConnection(req);
+
     const body = await req.json().catch(() => ({}));
     const { method, params, id = 1 } = body;
 
