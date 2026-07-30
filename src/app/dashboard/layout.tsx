@@ -1,27 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Wallet, Cpu, CheckSquare, Activity, Key, Sparkles, Settings, Copy, Check, LogOut } from 'lucide-react';
+import { usePrivy } from '@privy-io/react-auth';
+import { LayoutDashboard, Wallet, Cpu, CheckSquare, Activity, Key, Sparkles, Settings, Copy, Check, LogOut, Lock } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [copied, setCopied] = useState(false);
   const [testMode, setTestMode] = useState(true);
 
-  // Safe client state for wallet address & auth
-  const [privyState, setPrivyState] = useState<{
-    user: any;
-    authenticated: boolean;
-    ready: boolean;
-  }>({
-    user: null,
-    authenticated: true,
-    ready: true,
-  });
+  const { user, authenticated, login, logout } = usePrivy();
 
-  const walletAddress = privyState.user?.wallet?.address || '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
+  const walletAddress = user?.wallet?.address || '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
 
   const navItems = [
     { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
@@ -89,7 +81,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </nav>
         </div>
 
-        {/* Developer Mode & Footer */}
+        {/* Developer Mode & Sign In / Out Footer */}
         <div className="p-4 border-t border-white/20 space-y-3">
           <div className="flex items-center justify-between p-2 border border-white/20 text-[11px]">
             <span className="text-white/70 uppercase font-bold">ARC TESTNET</span>
@@ -102,6 +94,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {testMode ? 'ON' : 'OFF'}
             </button>
           </div>
+
+          {authenticated ? (
+            <button
+              onClick={logout}
+              className="w-full flex items-center justify-center space-x-2 py-2 border border-white/20 text-xs uppercase font-bold text-white/60 hover:text-white hover:border-white transition-all"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sign Out</span>
+            </button>
+          ) : (
+            <button
+              onClick={login}
+              className="w-full flex items-center justify-center space-x-2 py-2 border border-white bg-white text-black text-xs uppercase font-extrabold hover:bg-black hover:text-white transition-all"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>Sign In with Privy</span>
+            </button>
+          )}
         </div>
       </aside>
 

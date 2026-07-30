@@ -1,5 +1,30 @@
 import { PrivyClientConfig } from '@privy-io/react-auth';
 
+const arcTestnetChain = {
+  id: 763373,
+  name: 'Arc Testnet',
+  network: 'arc-testnet',
+  nativeCurrency: {
+    name: 'Arc',
+    symbol: 'ARC',
+    decimals: 18,
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://rpc.testnet.arc.network'],
+    },
+    public: {
+      http: ['https://rpc.testnet.arc.network'],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: 'Arc Explorer',
+      url: 'https://explorer.testnet.arc.network',
+    },
+  },
+};
+
 export const privyConfig: PrivyClientConfig = {
   loginMethods: ['google', 'email', 'wallet'],
   appearance: {
@@ -13,28 +38,6 @@ export const privyConfig: PrivyClientConfig = {
       createOnLogin: 'users-without-wallets',
     },
   },
-  defaultChain: {
-    id: 763373,
-    name: 'Arc Testnet',
-    network: 'arc-testnet',
-    nativeCurrency: {
-      name: 'Arc',
-      symbol: 'ARC',
-      decimals: 18,
-    },
-    rpcUrls: {
-      default: {
-        http: ['https://rpc.testnet.arc.network'],
-      },
-      public: {
-        http: ['https://rpc.testnet.arc.network'],
-      },
-    },
-    blockExplorers: {
-      default: {
-        name: 'Arc Explorer',
-        url: 'https://explorer.testnet.arc.network',
-      },
-    },
-  },
+  supportedChains: [arcTestnetChain],
+  defaultChain: arcTestnetChain,
 };
