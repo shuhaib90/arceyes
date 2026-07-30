@@ -16,6 +16,7 @@ export interface Profile {
   privy_user_id: string;
   display_name: string | null;
   avatar_url: string | null;
+  pin_hash: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -51,6 +52,15 @@ export interface MCPSession {
   expires_at: string;
   created_at: string;
   revoked_at: string | null;
+}
+
+export interface ExecutionSession {
+  id: string;
+  user_id: string;
+  connection_id: string | null;
+  unlocked_at: string;
+  expires_at: string;
+  status: 'active' | 'expired';
 }
 
 export interface ApprovalRequest {

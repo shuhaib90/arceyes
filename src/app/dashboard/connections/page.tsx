@@ -2,12 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Cpu, ShieldCheck, Plus, Trash2, Loader2, ArrowRight } from 'lucide-react';
+import { Cpu, ShieldCheck, Plus, Trash2, Loader2, ArrowRight, AlertTriangle } from 'lucide-react';
 import { AIConnection } from '@/lib/supabase/types';
 
 export default function ConnectionsPage() {
   const [connections, setConnections] = useState<AIConnection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [revokeTarget, setRevokeTarget] = useState<AIConnection | null>(null);
+  const [revoking, setRevoking] = useState(false);
 
   useEffect(() => {
     fetchConnections();
@@ -31,14 +33,19 @@ export default function ConnectionsPage() {
     }
   };
 
-  const handleRevoke = async (id: string) => {
+  const handleConfirmRevoke = async () => {
+    if (!revokeTarget) return;
     try {
-      const res = await fetch(`/api/connections/${id}`, { method: 'DELETE' });
+      setRevoking(true);
+      const res = await fetch(`/api/connections/${revokeTarget.id}`, { method: 'DELETE' });
       if (res.ok) {
-        setConnections((prev) => prev.filter((c) => c.id !== id));
+        setConnections((prev) => prev.filter((c) => c.id !== revokeTarget.id));
+        setRevokeTarget(null);
       }
     } catch (e) {
       console.error(e);
+    } finally {
+      setRevoking(false);
     }
   };
 
@@ -121,8 +128,8 @@ export default function ConnectionsPage() {
                     Details →
                   </Link>
                   <button
-                    onClick={() => handleRevoke(conn.id)}
-                    className="font-bold text-rose-400 hover:text-rose-300 border border-rose-500/30 px-2 py-0.5"
+                    onClick={() => setRevokeTarget(conn)}
+                    className="font-bold text-rose-400 hover:text-rose-300 border border-rose-500/30 px-2.5 py-1"
                   >
                     Revoke
                   </button>
@@ -140,6 +147,44 @@ export default function ConnectionsPage() {
           </div>
         )}
       </div>
+
+      {/* REVOKE CONFIRMATION MODAL */}
+      {revokeTarget && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="border-2 border-white bg-black p-6 max-w-md w-full space-y-5 font-mono">
+            <div className="flex items-center space-x-3 text-rose-400 border-b border-white/20 pb-3">
+              <AlertTriangle className="w-6 h-6 shrink-0" />
+              <h3 className="font-extrabold text-lg uppercase">Disconnect {revokeTarget.provider.toUpperCase()}?</h3>
+            </div>
+
+            <p className="text-xs text-white/80 leading-relaxed">
+              This will immediately stop <strong>{revokeTarget.provider}</strong> from accessing your ArcEyes account. Access tokens and execution permissions will be revoked.
+            </p>
+
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                onClick={() => setRevokeTarget(null)}
+                disabled={revoking}
+                className="border border-white/40 py-2.5 text-xs font-bold uppercase hover:border-white transition-all"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handleConfirmAndRevoke}
+                disabled={revoking}
+                className="border-2 border-rose-500 bg-rose-500 text-black py-2.5 text-xs font-extrabold uppercase hover:bg-black hover:text-rose-400 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+              >
+                {revoking ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>Disconnect</span>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+
+  async function handleConfirmAndRevoke() {
+    await handleConfirmRevoke();
+  }
 }

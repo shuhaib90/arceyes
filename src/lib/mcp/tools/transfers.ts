@@ -6,6 +6,20 @@ import { broadcastTransaction } from '@/lib/arc/transactions';
 
 export async function handlePrepareSend(token: string, amount: string, recipient: string, clientName: string = 'ChatGPT') {
   const session = await getCurrentUserSession();
+
+  // 🔒 Verify 1-Hour Execution Lock
+  const activeExecutionSession = await db.getActiveExecutionSession(session.userId);
+  if (!activeExecutionSession) {
+    const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+    const unlockUrl = `${baseUrl}/dashboard/permissions`;
+    return {
+      status: 'execution_locked',
+      error: 'EXECUTION_LOCKED',
+      unlock_url: unlockUrl,
+      message: `🔒 ArcEyes execution is locked. Enter your 6-digit ArcEyes Execution PIN on the secure website to unlock financial actions for 1 hour: ${unlockUrl}`,
+    };
+  }
+
   const tokenInfo = getTokenBySymbolOrAddress(token);
 
   const connections = await db.getConnections(session.userId);
@@ -88,6 +102,20 @@ export async function handlePrepareSend(token: string, amount: string, recipient
 
 export async function handlePrepareBridge(token: string, amount: string, sourceChain: string, targetChain: string, clientName: string = 'ChatGPT') {
   const session = await getCurrentUserSession();
+
+  // 🔒 Verify 1-Hour Execution Lock
+  const activeExecutionSession = await db.getActiveExecutionSession(session.userId);
+  if (!activeExecutionSession) {
+    const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+    const unlockUrl = `${baseUrl}/dashboard/permissions`;
+    return {
+      status: 'execution_locked',
+      error: 'EXECUTION_LOCKED',
+      unlock_url: unlockUrl,
+      message: `🔒 ArcEyes execution is locked. Enter your 6-digit ArcEyes Execution PIN on the secure website to unlock financial actions for 1 hour: ${unlockUrl}`,
+    };
+  }
+
   const bridgeAdapter = registry.getPrimaryBridge();
   const quote = await bridgeAdapter.getBridgeQuote(token, amount, sourceChain, targetChain);
 

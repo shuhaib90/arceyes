@@ -1,5 +1,6 @@
-import { ApprovalRequest, ActivityLog, AIConnection, Profile, Wallet, NFTStatus } from './types';
+import { ApprovalRequest, ActivityLog, AIConnection, Profile, Wallet, NFTStatus, ExecutionSession } from './types';
 import { supabaseServer } from './server';
+import crypto from 'crypto';
 
 class ArcEyesDB {
   private profiles: Map<string, Profile> = new Map();
@@ -8,6 +9,7 @@ class ArcEyesDB {
   private approvals: Map<string, ApprovalRequest> = new Map();
   private activityLogs: ActivityLog[] = [];
   private nftStatuses: Map<string, NFTStatus> = new Map();
+  private executionSessions: Map<string, ExecutionSession> = new Map();
 
   // Profile Methods
   async getProfileByPrivyId(privyUserId: string): Promise<Profile | null> {
@@ -25,6 +27,7 @@ class ArcEyesDB {
       privy_user_id: privyUserId,
       display_name: 'Arc User',
       avatar_url: null,
+      pin_hash: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -34,6 +37,79 @@ class ArcEyesDB {
     }
     this.profiles.set(newProfile.id, newProfile);
     return newProfile;
+  }
+
+  async setExecutionPin(userId: string, pin: string): Promise<boolean> {
+    const pinHash = crypto.createHash('sha256').update(pin).digest('hex');
+    if (supabaseServer) {
+      const { error } = await supabaseServer.from('profiles').update({ pin_hash: pinHash }).eq('id', userId);
+      if (!error) return true;
+    }
+    const profile = this.profiles.get(userId);
+    if (profile) {
+      profile.pin_hash = pinHash;
+      return true;
+    }
+    return true;
+  }
+
+  async verifyExecutionPin(userId: string, pin: string): Promise<boolean> {
+    const pinHash = crypto.createHash('sha256').update(pin).digest('hex');
+    if (supabaseServer) {
+      const { data } = await supabaseServer.from('profiles').select('pin_hash').eq('id', userId).single();
+      if (data && data.pin_hash) {
+        return data.pin_hash === pinHash;
+      }
+    }
+    const profile = this.profiles.get(userId);
+    if (profile && profile.pin_hash) {
+      return profile.pin_hash === pinHash;
+    }
+    // Default PIN: 123456 if none set
+    return pin === '123456' || pinHash === crypto.createHash('sha256').update('123456').digest('hex');
+  }
+
+  // 1-Hour Execution Sessions
+  async createExecutionSession(userId: string, connectionId?: string): Promise<ExecutionSession> {
+    const id = `exec_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+
+    const session: ExecutionSession = {
+      id,
+      user_id: userId,
+      connection_id: connectionId || null,
+      unlocked_at: new Date().toISOString(),
+      expires_at: expiresAt,
+      status: 'active',
+    };
+
+    if (supabaseServer) {
+      await supabaseServer.from('execution_sessions').insert(session);
+    }
+    this.executionSessions.set(id, session);
+    return session;
+  }
+
+  async getActiveExecutionSession(userId: string): Promise<ExecutionSession | null> {
+    const now = new Date().toISOString();
+    if (supabaseServer) {
+      const { data } = await supabaseServer
+        .from('execution_sessions')
+        .select('*')
+        .eq('user_id', userId)
+        .gt('expires_at', now)
+        .order('expires_at', { ascending: false })
+        .limit(1)
+        .single();
+      if (data) return data as ExecutionSession;
+    }
+
+    for (const sess of this.executionSessions.values()) {
+      if (sess.user_id === userId && sess.expires_at > now) {
+        return sess;
+      }
+    }
+    return null;
   }
 
   // Wallet Methods
@@ -66,41 +142,32 @@ class ArcEyesDB {
   // Connections
   async getConnections(userId: string): Promise<AIConnection[]> {
     if (supabaseServer) {
-      const { data } = await supabaseServer.from('ai_connections').select('*').eq('user_id', userId);
+      const { data } = await supabaseServer.from('ai_connections').select('*').eq('user_id', userId).neq('status', 'revoked');
       if (data) return data as AIConnection[];
     }
-    return Array.from(this.connections.values()).filter((c) => c.user_id === userId);
+    return Array.from(this.connections.values()).filter((c) => c.user_id === userId && c.status !== 'revoked');
   }
 
-  async updateConnectionScopes(connectionId: string, scopes: string[]): Promise<AIConnection | null> {
-    if (supabaseServer) {
-      const { data } = await supabaseServer.from('ai_connections').update({ scopes }).eq('id', connectionId).select().single();
-      if (data) return data as AIConnection;
-    }
-    const conn = this.connections.get(connectionId);
-    if (!conn) return null;
-    conn.scopes = scopes;
-    this.connections.set(connectionId, conn);
-    return conn;
-  }
+  async createAIConnection(userId: string, provider: 'chatgpt' | 'claude' | 'mcp_generic', clientId: string, scopes: string[]): Promise<AIConnection> {
+    const id = `conn_${provider}_${Date.now()}`;
+    const newConn: AIConnection = {
+      id,
+      user_id: userId,
+      provider,
+      client_id: clientId,
+      status: 'active',
+      scopes,
+      autonomous_enabled: false,
+      max_auto_amount_usd: 50,
+      created_at: new Date().toISOString(),
+      last_used_at: new Date().toISOString(),
+    };
 
-  async updateAutonomousSettings(connectionId: string, enabled: boolean, maxLimitUsd: number): Promise<AIConnection | null> {
     if (supabaseServer) {
-      const { data } = await supabaseServer
-        .from('ai_connections')
-        .update({ autonomous_enabled: enabled, max_auto_amount_usd: maxLimitUsd })
-        .eq('id', connectionId)
-        .select()
-        .single();
-      if (data) return data as AIConnection;
+      await supabaseServer.from('ai_connections').insert(newConn);
     }
-
-    const conn = this.connections.get(connectionId);
-    if (!conn) return null;
-    conn.autonomous_enabled = enabled;
-    conn.max_auto_amount_usd = maxLimitUsd;
-    this.connections.set(connectionId, conn);
-    return conn;
+    this.connections.set(id, newConn);
+    return newConn;
   }
 
   async revokeConnection(connectionId: string): Promise<boolean> {

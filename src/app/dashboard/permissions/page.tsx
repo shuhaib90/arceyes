@@ -1,9 +1,24 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Key, Shield, AlertTriangle, Trash2, Save, Check, Zap, Cpu } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Key, Shield, AlertTriangle, Trash2, Save, Check, Zap, Cpu, Lock, Unlock, Clock, Loader2 } from 'lucide-react';
+import { usePrivy } from '@privy-io/react-auth';
 
 export default function PermissionsPage() {
+  let user: any = null;
+  try {
+    const privy = usePrivy();
+    user = privy.user;
+  } catch (e) {
+    console.warn(e);
+  }
+
+  const [pin, setPin] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [unlocking, setUnlocking] = useState(false);
+  const [executionUnlocked, setExecutionUnlocked] = useState(false);
+  const [remainingMinutes, setRemainingMinutes] = useState(0);
+
   const [autonomousEnabled, setAutonomousEnabled] = useState(false);
   const [maxAmountUsd, setMaxAmountUsd] = useState('50');
 
@@ -20,6 +35,56 @@ export default function PermissionsPage() {
 
   const [saved, setSaved] = useState(false);
 
+  useEffect(() => {
+    checkExecutionSession();
+  }, []);
+
+  const checkExecutionSession = async () => {
+    try {
+      const res = await fetch('/api/execution/unlock');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.unlocked) {
+          setExecutionUnlocked(true);
+          setRemainingMinutes(data.remaining_minutes || 60);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleUnlockPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pin || pin.length < 4) {
+      setPinError('Please enter your 6-digit ArcEyes Execution PIN (Default: 123456)');
+      return;
+    }
+
+    try {
+      setUnlocking(true);
+      setPinError('');
+      const res = await fetch('/api/execution/unlock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setExecutionUnlocked(true);
+        setRemainingMinutes(60);
+        setPin('');
+      } else {
+        setPinError(data.error || 'Invalid PIN. Try default PIN: 123456');
+      }
+    } catch (err: any) {
+      setPinError('Error unlocking execution session');
+    } finally {
+      setUnlocking(false);
+    }
+  };
+
   const toggleScope = (key: keyof typeof scopes) => {
     setScopes((prev) => ({ ...prev, [key]: !prev[key] }));
   };
@@ -30,12 +95,86 @@ export default function PermissionsPage() {
   };
 
   return (
-    <div className="space-y-8 font-mono">
+    <div className="space-y-8 font-mono text-white">
       <div className="border-b border-white/20 pb-6">
-        <h1 className="text-3xl font-extrabold uppercase tracking-tight font-mono">Permissions &amp; Delegated Execution</h1>
+        <h1 className="text-3xl font-extrabold uppercase tracking-tight">Permissions &amp; Execution Security</h1>
         <p className="text-xs text-white/60 mt-1">
-          Configure permission scopes and enable/disable Autonomous AI Delegated Execution for connected AI assistants.
+          Manage 1-Hour Financial Action Locks, ArcEyes PIN authentication, and MCP client scopes.
         </p>
+      </div>
+
+      {/* 1-HOUR FINANCIAL EXECUTION LOCK CARD */}
+      <div className={`border-2 p-6 transition-all ${executionUnlocked ? 'border-emerald-400 bg-emerald-950/20' : 'border-white bg-black'}`}>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/20 pb-4 mb-4">
+          <div className="flex items-center space-x-3">
+            {executionUnlocked ? (
+              <Unlock className="w-7 h-7 text-emerald-400 shrink-0 animate-pulse" />
+            ) : (
+              <Lock className="w-7 h-7 text-white shrink-0" />
+            )}
+            <div>
+              <div className="text-xs uppercase font-extrabold tracking-wider text-white/60">FINANCIAL ACTION EXECUTION SECURITY</div>
+              <div className="text-xl font-extrabold uppercase flex items-center space-x-2">
+                <span>Trades &amp; Swaps:</span>
+                <span className={executionUnlocked ? 'text-emerald-400' : 'text-white'}>
+                  {executionUnlocked ? `🟢 UNLOCKED (${remainingMinutes}m remaining)` : '🔒 LOCKED'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <span
+            className={`px-3 py-1 text-xs font-bold uppercase border ${
+              executionUnlocked
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                : 'bg-white/10 text-white border-white/20'
+            }`}
+          >
+            {executionUnlocked ? '1-HOUR SESSION ACTIVE' : 'PIN UNLOCK REQUIRED'}
+          </span>
+        </div>
+
+        {!executionUnlocked ? (
+          <div className="space-y-4">
+            <p className="text-xs text-white/70 leading-relaxed">
+              Read operations (balances, portfolio) work automatically. Financial transaction requests from ChatGPT or Claude require entering your ArcEyes Execution PIN to unlock 1 hour of trading.
+            </p>
+
+            <form onSubmit={handleUnlockPin} className="space-y-3 max-w-md pt-2">
+              <label className="block text-xs font-bold uppercase text-white">
+                Enter ArcEyes Execution PIN (Default: 123456)
+              </label>
+              <div className="flex items-center space-x-3">
+                <input
+                  type="password"
+                  maxLength={6}
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value)}
+                  placeholder="123456"
+                  className="bg-white text-black font-mono text-lg tracking-widest border-2 border-white p-2.5 w-40 font-bold text-center"
+                />
+                <button
+                  type="submit"
+                  disabled={unlocking}
+                  className="border-2 border-white bg-white text-black px-6 py-3 text-xs font-extrabold uppercase hover:bg-black hover:text-white transition-all flex items-center space-x-2 shrink-0 disabled:opacity-50"
+                >
+                  {unlocking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Unlock className="w-4 h-4" />}
+                  <span>Unlock for 1 Hour →</span>
+                </button>
+              </div>
+              {pinError && <div className="text-xs text-rose-400 font-bold">{pinError}</div>}
+            </form>
+          </div>
+        ) : (
+          <div className="space-y-2 text-xs text-emerald-300">
+            <p>
+              ✓ Financial execution is <strong>UNLOCKED</strong> for {remainingMinutes} minutes. ChatGPT &amp; Claude can prepare swaps and transfers.
+            </p>
+            <p className="text-[11px] text-white/60">
+              Note: The AI connection remains permanently connected. After {remainingMinutes} minutes, financial actions auto-lock while read permissions stay active.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Autonomous AI Delegated Execution Banner Card */}
@@ -92,16 +231,9 @@ export default function PermissionsPage() {
       <div className="border-2 border-white p-6 bg-black space-y-6">
         <div className="flex items-center justify-between border-b border-white/20 pb-4">
           <div>
-            <h2 className="text-xl font-bold uppercase">ChatGPT &amp; Claude Scope Permissions</h2>
-            <p className="text-xs text-white/60">Connected Client IDs: conn_chatgpt_1, conn_claude_1</p>
+            <h2 className="text-xl font-bold uppercase">MCP Scope Permissions</h2>
+            <p className="text-xs text-white/60">Configure fine-grained read and write permissions</p>
           </div>
-          <button
-            onClick={() => alert('Connection Revoked')}
-            className="border border-white/40 text-white hover:bg-white hover:text-black text-xs font-bold uppercase px-4 py-2 transition-all flex items-center space-x-2"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Revoke Access</span>
-          </button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -144,18 +276,18 @@ export default function PermissionsPage() {
             className="border border-white bg-white text-black text-xs font-extrabold uppercase px-8 py-3 hover:bg-black hover:text-white transition-all flex items-center space-x-2"
           >
             {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-            <span>{saved ? 'Permissions Saved' : 'Save Scopes & Delegated Settings'}</span>
+            <span>{saved ? 'Permissions Saved' : 'Save Scopes & Settings'}</span>
           </button>
         </div>
       </div>
 
       <div className="border border-white/20 p-4 bg-white/5 text-xs space-y-2">
         <div className="font-bold uppercase text-white flex items-center space-x-2">
-          <AlertTriangle className="w-4 h-4" />
-          <span>STRICT PRIVACY BOUNDARY</span>
+          <AlertTriangle className="w-4 h-4 text-amber-400" />
+          <span>SECURITY PRINCIPLE: AI CONNECTION ≠ WALLET CONTROL</span>
         </div>
         <p className="text-white/70">
-          Private keys, seed phrases, and Privy signing credentials can NEVER be granted or accessed by AI clients.
+          Entering your ArcEyes Execution PIN unlocks financial transaction requests for 1 hour. Private keys and seed phrases are NEVER sent to AI models or MCP clients.
         </p>
       </div>
     </div>

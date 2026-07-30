@@ -14,6 +14,20 @@ export async function handleGetSwapQuote(tokenIn: string, tokenOut: string, amou
 
 export async function handlePrepareSwap(tokenIn: string, tokenOut: string, amount: string, slippage: string = '0.5%', clientName: string = 'ChatGPT') {
   const session = await getCurrentUserSession();
+
+  // 🔒 Verify 1-Hour Execution Lock
+  const activeExecutionSession = await db.getActiveExecutionSession(session.userId);
+  if (!activeExecutionSession) {
+    const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+    const unlockUrl = `${baseUrl}/dashboard/permissions`;
+    return {
+      status: 'execution_locked',
+      error: 'EXECUTION_LOCKED',
+      unlock_url: unlockUrl,
+      message: `🔒 ArcEyes execution is locked. Enter your 6-digit ArcEyes Execution PIN on the secure website to unlock financial actions for 1 hour: ${unlockUrl}`,
+    };
+  }
+
   const dex = registry.getPrimaryDEX();
   const quote = await dex.getQuote(tokenIn, tokenOut, amount, slippage);
 
