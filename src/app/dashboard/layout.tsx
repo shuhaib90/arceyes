@@ -1,15 +1,22 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { usePrivy } from '@privy-io/react-auth';
-import { LayoutDashboard, Wallet, Cpu, CheckSquare, Activity, Key, Sparkles, Settings, Copy, Check, LogOut, Lock } from 'lucide-react';
+import { LayoutDashboard, Wallet, Cpu, CheckSquare, Activity, Key, Sparkles, Settings, Copy, Check, LogOut, Lock, KeyRound, ShieldAlert, Loader2 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [copied, setCopied] = useState(false);
   const [testMode, setTestMode] = useState(true);
+
+  // New PIN Setup Modal State
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [savingPin, setSavingPin] = useState(false);
 
   let user: any = null;
   let authenticated = false;
@@ -27,6 +34,52 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   const walletAddress = user?.wallet?.address || '';
+
+  // Trigger Create PIN modal on first sign up / login if not set up
+  useEffect(() => {
+    if (authenticated) {
+      const pinSetupDone = localStorage.getItem('arceyes_pin_setup_completed');
+      if (!pinSetupDone) {
+        setShowPinModal(true);
+      }
+    }
+  }, [authenticated]);
+
+  const handleSaveInitialPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPin || newPin.length < 4) {
+      setPinError('PIN must be 4 to 6 digits');
+      return;
+    }
+    if (newPin !== confirmPin) {
+      setPinError('PINs do not match');
+      return;
+    }
+
+    try {
+      setSavingPin(true);
+      setPinError('');
+      const res = await fetch('/api/execution/pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: newPin }),
+      });
+
+      if (res.ok) {
+        localStorage.setItem('arceyes_pin_setup_completed', 'true');
+        setShowPinModal(false);
+        setNewPin('');
+        setConfirmPin('');
+      } else {
+        const data = await res.json();
+        setPinError(data.error || 'Failed to save PIN');
+      }
+    } catch (err: any) {
+      setPinError('Error saving security PIN');
+    } finally {
+      setSavingPin(false);
+    }
+  };
 
   const navItems = [
     { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
@@ -139,6 +192,70 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <main className="flex-1 min-w-0 p-6 md:p-10 overflow-y-auto">
         {children}
       </main>
+
+      {/* CREATE EXECUTION PIN MODAL AFTER PRIVY SIGN-IN */}
+      {showPinModal && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
+          <div className="border-2 border-white bg-black p-6 sm:p-8 max-w-lg w-full space-y-6 font-mono text-white selection:bg-white selection:text-black">
+            <div className="flex items-center space-x-3 border-b border-white/20 pb-4">
+              <div className="w-9 h-9 border border-white flex items-center justify-center bg-white text-black font-bold">
+                <KeyRound className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-xl font-extrabold uppercase">Create ArcEyes Execution PIN</h2>
+                <div className="text-[10px] text-white/60">SECURITY SETUP &bull; PRIVY INTEGRATION</div>
+              </div>
+            </div>
+
+            <p className="text-xs text-white/80 leading-relaxed">
+              Set a secret <strong>6-digit security PIN</strong>. You will enter this PIN on the ArcEyes website to unlock 1-hour trading sessions for financial transactions prepared by ChatGPT or Claude.
+            </p>
+
+            <form onSubmit={handleSaveInitialPin} className="space-y-4">
+              <div className="space-y-1">
+                <label className="block text-xs font-bold uppercase text-white/70">Create 6-Digit Execution PIN</label>
+                <input
+                  type="password"
+                  maxLength={6}
+                  value={newPin}
+                  onChange={(e) => setNewPin(e.target.value)}
+                  placeholder="e.g. 123456"
+                  className="w-full bg-white text-black font-mono text-xl tracking-widest border-2 border-white p-3 font-bold text-center"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-bold uppercase text-white/70">Confirm 6-Digit Execution PIN</label>
+                <input
+                  type="password"
+                  maxLength={6}
+                  value={confirmPin}
+                  onChange={(e) => setConfirmPin(e.target.value)}
+                  placeholder="Re-enter 6-digit PIN"
+                  className="w-full bg-white text-black font-mono text-xl tracking-widest border-2 border-white p-3 font-bold text-center"
+                />
+              </div>
+
+              {pinError && <div className="text-xs text-rose-400 font-bold">{pinError}</div>}
+
+              <div className="border border-white/20 p-3 bg-white/5 text-[11px] text-white/70 flex items-start space-x-2">
+                <ShieldAlert className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold text-white">SECURITY GUARANTEE:</span> This PIN is entered ONLY on the ArcEyes website. It is NEVER shared with ChatGPT, Claude, or AI models.
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={savingPin}
+                className="w-full border-2 border-white bg-white text-black py-4 text-xs font-extrabold uppercase hover:bg-black hover:text-white transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+              >
+                {savingPin ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>Save Execution PIN &amp; Continue →</span>}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
