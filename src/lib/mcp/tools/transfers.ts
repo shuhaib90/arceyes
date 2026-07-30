@@ -6,11 +6,11 @@ import { broadcastTransaction } from '@/lib/arc/transactions';
 
 export async function handlePrepareSend(token: string, amount: string, recipient: string, clientName: string = 'ChatGPT') {
   const session = await getCurrentUserSession();
+  const baseUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://arceyes-agent.vercel.app';
 
   // 🔒 Verify 1-Hour Execution Lock
   const activeExecutionSession = await db.getActiveExecutionSession(session.userId);
   if (!activeExecutionSession) {
-    const baseUrl = process.env.APP_URL || 'http://localhost:3000';
     const unlockUrl = `${baseUrl}/dashboard/permissions`;
     return {
       status: 'execution_locked',
@@ -88,7 +88,6 @@ export async function handlePrepareSend(token: string, amount: string, recipient
     expires_at: new Date(Date.now() + 1800000).toISOString(),
   });
 
-  const baseUrl = process.env.APP_URL || 'http://localhost:3000';
   const approvalUrl = `${baseUrl}/approve/${approval.id}`;
 
   return {
@@ -102,11 +101,11 @@ export async function handlePrepareSend(token: string, amount: string, recipient
 
 export async function handlePrepareBridge(token: string, amount: string, sourceChain: string, targetChain: string, clientName: string = 'ChatGPT') {
   const session = await getCurrentUserSession();
+  const baseUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://arceyes-agent.vercel.app';
 
   // 🔒 Verify 1-Hour Execution Lock
   const activeExecutionSession = await db.getActiveExecutionSession(session.userId);
   if (!activeExecutionSession) {
-    const baseUrl = process.env.APP_URL || 'http://localhost:3000';
     const unlockUrl = `${baseUrl}/dashboard/permissions`;
     return {
       status: 'execution_locked',
@@ -187,7 +186,6 @@ export async function handlePrepareBridge(token: string, amount: string, sourceC
     expires_at: new Date(Date.now() + 1800000).toISOString(),
   });
 
-  const baseUrl = process.env.APP_URL || 'http://localhost:3000';
   const approvalUrl = `${baseUrl}/approve/${approval.id}`;
 
   return {

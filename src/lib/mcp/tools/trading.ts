@@ -14,11 +14,11 @@ export async function handleGetSwapQuote(tokenIn: string, tokenOut: string, amou
 
 export async function handlePrepareSwap(tokenIn: string, tokenOut: string, amount: string, slippage: string = '0.5%', clientName: string = 'ChatGPT') {
   const session = await getCurrentUserSession();
+  const baseUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://arceyes-agent.vercel.app';
 
   // 🔒 Verify 1-Hour Execution Lock
   const activeExecutionSession = await db.getActiveExecutionSession(session.userId);
   if (!activeExecutionSession) {
-    const baseUrl = process.env.APP_URL || 'http://localhost:3000';
     const unlockUrl = `${baseUrl}/dashboard/permissions`;
     return {
       status: 'execution_locked',
@@ -113,7 +113,6 @@ export async function handlePrepareSwap(tokenIn: string, tokenOut: string, amoun
     expires_at: new Date(Date.now() + 1800000).toISOString(),
   });
 
-  const baseUrl = process.env.APP_URL || 'http://localhost:3000';
   const approvalUrl = `${baseUrl}/approve/${approval.id}`;
 
   return {
