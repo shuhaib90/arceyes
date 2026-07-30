@@ -5,19 +5,26 @@ import { usePrivy } from '@privy-io/react-auth';
 import { Settings, Shield, Terminal, Cpu, Database, RefreshCw, Copy, Check } from 'lucide-react';
 
 export default function SettingsDashboardPage() {
-  const { user } = usePrivy();
-  const [copied, setCopied] = useState(false);
+  let user: any = null;
+  try {
+    const privy = usePrivy();
+    user = privy.user;
+  } catch (e) {
+    console.warn(e);
+  }
 
-  const walletAddress = user?.wallet?.address || '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
+  const [copied, setCopied] = useState(false);
+  const walletAddress = user?.wallet?.address || '';
 
   const handleCopy = () => {
+    if (!walletAddress) return;
     navigator.clipboard.writeText(walletAddress);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="space-y-8 font-mono">
+    <div className="space-y-8 font-mono text-white">
       <div className="border-b border-white/20 pb-6">
         <h1 className="text-3xl font-extrabold uppercase tracking-tight">Settings &amp; Advanced</h1>
         <p className="text-xs text-white/60 mt-1">Manage user profile, RPC configuration, active sessions, and developer information.</p>
@@ -33,15 +40,17 @@ export default function SettingsDashboardPage() {
           </div>
           <div className="flex justify-between border-b border-white/10 pb-2">
             <span className="text-white/60">PRIVY USER DID</span>
-            <span className="font-bold text-white font-mono">{user?.id || 'did:privy:cm0x_demo_user'}</span>
+            <span className="font-bold text-white font-mono">{user?.id || 'Not Signed In'}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-white/60">EMBEDDED WALLET ADDRESS</span>
             <div className="flex items-center space-x-2">
-              <span className="font-bold text-white font-mono">{walletAddress}</span>
-              <button onClick={handleCopy} className="hover:text-white text-white/60">
-                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              </button>
+              <span className="font-bold text-white font-mono">{walletAddress || 'Not Connected'}</span>
+              {walletAddress && (
+                <button onClick={handleCopy} className="hover:text-white text-white/60">
+                  {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -66,7 +75,7 @@ export default function SettingsDashboardPage() {
           </div>
           <div className="flex justify-between border-b border-white/10 pb-2">
             <span className="text-white/60">REMOTE MCP SERVER URL</span>
-            <span className="font-bold text-white font-mono">http://localhost:3000/api/mcp</span>
+            <span className="font-bold text-white font-mono">https://arceyes-agent.vercel.app/api/mcp</span>
           </div>
           <div className="flex justify-between">
             <span className="text-white/60">MCP TRANSPORT</span>

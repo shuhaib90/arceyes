@@ -14,8 +14,6 @@ export async function getTransactionStatus(txHash: string): Promise<TransactionS
     status: 'confirmed',
     blockNumber: 1492080,
     confirmations: 12,
-    from: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-    to: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359',
     value: '10.0',
   };
 }

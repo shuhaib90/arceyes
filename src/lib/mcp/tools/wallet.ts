@@ -4,6 +4,15 @@ import { getTokenBySymbolOrAddress } from '@/lib/arc/tokens';
 
 export async function handleGetWallet() {
   const session = await getCurrentUserSession();
+  if (!session.walletAddress) {
+    const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+    return {
+      status: 'authentication_required',
+      message: `🔒 ArcEyes authentication required. Please sign in to authorize ChatGPT/Claude: ${baseUrl}/connect/oauth`,
+      connect_url: `${baseUrl}/connect/oauth`,
+    };
+  }
+
   return {
     walletAddress: session.walletAddress,
     chain: 'Arc Testnet',
@@ -14,6 +23,15 @@ export async function handleGetWallet() {
 
 export async function handleGetBalance() {
   const session = await getCurrentUserSession();
+  if (!session.walletAddress) {
+    const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+    return {
+      status: 'authentication_required',
+      message: `🔒 ArcEyes authentication required. Please sign in to authorize ChatGPT/Claude: ${baseUrl}/connect/oauth`,
+      connect_url: `${baseUrl}/connect/oauth`,
+    };
+  }
+
   const nativeBal = await getNativeBalance(session.walletAddress);
   return {
     walletAddress: session.walletAddress,
@@ -26,6 +44,15 @@ export async function handleGetBalance() {
 
 export async function handleGetPortfolio() {
   const session = await getCurrentUserSession();
+  if (!session.walletAddress) {
+    const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+    return {
+      status: 'authentication_required',
+      message: `🔒 ArcEyes authentication required. Please sign in to authorize ChatGPT/Claude: ${baseUrl}/connect/oauth`,
+      connect_url: `${baseUrl}/connect/oauth`,
+    };
+  }
+
   const portfolio = await getPortfolio(session.walletAddress);
   return {
     walletAddress: session.walletAddress,
@@ -35,13 +62,22 @@ export async function handleGetPortfolio() {
 
 export async function handleGetTokenBalance(tokenAddressOrSymbol: string) {
   const session = await getCurrentUserSession();
+  if (!session.walletAddress) {
+    const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+    return {
+      status: 'authentication_required',
+      message: `🔒 ArcEyes authentication required. Please sign in to authorize ChatGPT/Claude: ${baseUrl}/connect/oauth`,
+      connect_url: `${baseUrl}/connect/oauth`,
+    };
+  }
+
   const token = getTokenBySymbolOrAddress(tokenAddressOrSymbol);
   return {
     walletAddress: session.walletAddress,
     token: token.symbol,
     tokenName: token.name,
-    balance: '125.00',
-    formatted: `125.00 ${token.symbol}`,
+    balance: '0.00',
+    formatted: `0.00 ${token.symbol}`,
     contractAddress: token.address,
   };
 }

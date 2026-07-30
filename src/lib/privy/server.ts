@@ -10,7 +10,7 @@ export const privyServerClient =
 
 export async function verifyPrivyAuthToken(authToken: string) {
   if (!privyServerClient) {
-    return { verified: true, userId: 'usr_arceyes_prod_1', address: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F' };
+    return { verified: false, error: 'Privy server client not initialized' };
   }
 
   try {
@@ -21,7 +21,7 @@ export async function verifyPrivyAuthToken(authToken: string) {
     return {
       verified: true,
       userId: claims.userId,
-      address: wallet?.address || '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
+      address: wallet?.address || null,
     };
   } catch (err: any) {
     return { verified: false, error: err.message || 'Invalid auth token' };
