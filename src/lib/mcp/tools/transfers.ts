@@ -9,6 +9,7 @@ export async function handlePrepareSend(token: string, amount: string, recipient
   const baseUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://arceyes-agent.vercel.app';
 
   const tokenInfo = getTokenBySymbolOrAddress(token);
+  const wallet = await db.getWalletByUserId(session.userId);
 
   const connections = await db.getConnections(session.userId);
   const conn = connections.find((c) => c.provider === 'chatgpt' || c.provider === 'claude') || connections[0];
@@ -21,7 +22,7 @@ export async function handlePrepareSend(token: string, amount: string, recipient
 
     const autoApproval = await db.createApprovalRequest({
       user_id: session.userId,
-      wallet_id: 'wlt_arceyes_demo_1',
+      wallet_id: wallet ? wallet.id : 'wlt_arceyes_main',
       connection_id: conn ? conn.id : null,
       action: 'transfer',
       request_payload: {
@@ -55,7 +56,7 @@ export async function handlePrepareSend(token: string, amount: string, recipient
 
   const approval = await db.createApprovalRequest({
     user_id: session.userId,
-    wallet_id: 'wlt_arceyes_demo_1',
+    wallet_id: wallet ? wallet.id : 'wlt_arceyes_main',
     connection_id: conn ? conn.id : null,
     action: 'transfer',
     request_payload: {
@@ -93,6 +94,7 @@ export async function handlePrepareBridge(token: string, amount: string, sourceC
 
   const bridgeAdapter = registry.getPrimaryBridge();
   const quote = await bridgeAdapter.getBridgeQuote(token, amount, sourceChain, targetChain);
+  const wallet = await db.getWalletByUserId(session.userId);
 
   const connections = await db.getConnections(session.userId);
   const conn = connections.find((c) => c.provider === 'chatgpt' || c.provider === 'claude') || connections[0];
@@ -105,7 +107,7 @@ export async function handlePrepareBridge(token: string, amount: string, sourceC
 
     const autoApproval = await db.createApprovalRequest({
       user_id: session.userId,
-      wallet_id: 'wlt_arceyes_demo_1',
+      wallet_id: wallet ? wallet.id : 'wlt_arceyes_main',
       connection_id: conn ? conn.id : null,
       action: 'bridge',
       request_payload: {
@@ -140,7 +142,7 @@ export async function handlePrepareBridge(token: string, amount: string, sourceC
 
   const approval = await db.createApprovalRequest({
     user_id: session.userId,
-    wallet_id: 'wlt_arceyes_demo_1',
+    wallet_id: wallet ? wallet.id : 'wlt_arceyes_main',
     connection_id: conn ? conn.id : null,
     action: 'bridge',
     request_payload: {

@@ -18,6 +18,7 @@ export async function handlePrepareSwap(tokenIn: string, tokenOut: string, amoun
 
   const dex = registry.getPrimaryDEX();
   const quote = await dex.getQuote(tokenIn, tokenOut, amount, slippage);
+  const wallet = await db.getWalletByUserId(session.userId);
 
   // Check if Autonomous Auto-Approve Mode is enabled
   const connections = await db.getConnections(session.userId);
@@ -32,7 +33,7 @@ export async function handlePrepareSwap(tokenIn: string, tokenOut: string, amoun
 
     const autoApproval = await db.createApprovalRequest({
       user_id: session.userId,
-      wallet_id: 'wlt_arceyes_demo_1',
+      wallet_id: wallet ? wallet.id : 'wlt_arceyes_main',
       connection_id: conn ? conn.id : null,
       action: 'swap',
       request_payload: {
@@ -76,7 +77,7 @@ export async function handlePrepareSwap(tokenIn: string, tokenOut: string, amoun
   // Standard Manual Confirmation Mode
   const approval = await db.createApprovalRequest({
     user_id: session.userId,
-    wallet_id: 'wlt_arceyes_demo_1',
+    wallet_id: wallet ? wallet.id : 'wlt_arceyes_main',
     connection_id: conn ? conn.id : null,
     action: 'swap',
     request_payload: {
