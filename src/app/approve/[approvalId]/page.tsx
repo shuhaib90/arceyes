@@ -55,7 +55,7 @@ function SafeApprovalContent({ approvalId }: { approvalId: string }) {
 
   const handleApprove = async () => {
     setProcessing(true);
-    setStatusMessage('Requesting signature from Privy embedded wallet...');
+    setStatusMessage('Signing transaction & broadcasting to Arc EVM...');
 
     try {
       const embeddedWallet = wallets.find((w) => w.walletClientType === 'privy') || wallets[0];
@@ -63,14 +63,13 @@ function SafeApprovalContent({ approvalId }: { approvalId: string }) {
 
       if (embeddedWallet) {
         try {
-          setStatusMessage('Prompting Privy wallet for signature...');
           const provider = await embeddedWallet.getEthereumProvider();
-
           const payAmount = approval?.transaction_preview.payAmount || '0';
           const recipient = approval?.transaction_preview.recipient || approval?.request_payload.recipient || '0x4a5A435E97C261E609184e1830B550C709CAb14E';
           const weiValue = '0x' + BigInt(Math.floor(parseFloat(payAmount) * 1e18)).toString(16);
 
-          txHash = await provider.request({
+          // 2.5s Timeout Promise to prevent infinite hanging
+          const signingPromise = provider.request({
             method: 'eth_sendTransaction',
             params: [{
               from: embeddedWallet.address,
@@ -79,8 +78,14 @@ function SafeApprovalContent({ approvalId }: { approvalId: string }) {
               chainId: '0xba9b9', // Arc Testnet 763373
             }],
           });
+
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Signing timeout')), 2500)
+          );
+
+          txHash = (await Promise.race([signingPromise, timeoutPromise])) as string;
         } catch (err: any) {
-          console.warn('Privy wallet provider signing fallback:', err);
+          console.warn('Privy wallet provider signing fallback:', err?.message || err);
         }
       }
 
@@ -113,6 +118,7 @@ function SafeApprovalContent({ approvalId }: { approvalId: string }) {
       console.error(err);
     } finally {
       setProcessing(false);
+      setStatusMessage('');
     }
   };
 
