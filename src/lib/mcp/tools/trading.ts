@@ -64,7 +64,7 @@ export async function handlePrepareSwap(tokenIn: string, tokenOut: string, amoun
       approval_id: autoApproval.id,
       transactionHash: broadcastResult.txHash,
       message: `✓ Auto-Approve Mode Active: Swap of ${quote.amountIn} ${quote.tokenIn} → ${quote.amountOut} ${quote.tokenOut} confirmed on Arc EVM.`,
-      explorerUrl: `https://explorer.testnet.arc.network/tx/${broadcastResult.txHash}`,
+      explorerUrl: `https://testnet.arcscan.app/tx/${broadcastResult.txHash}`,
       summary: {
         pay: `${quote.amountIn} ${quote.tokenIn}`,
         receive: `≈ ${quote.amountOut} ${quote.tokenOut}`,

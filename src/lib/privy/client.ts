@@ -20,7 +20,7 @@ const arcTestnetChain = {
   blockExplorers: {
     default: {
       name: 'Arc Explorer',
-      url: 'https://explorer.testnet.arc.network',
+      url: 'https://testnet.arcscan.app',
     },
   },
 };

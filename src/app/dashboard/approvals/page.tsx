@@ -20,7 +20,7 @@ export default function ApprovalsDashboardPage() {
       const res = await fetch('/api/approvals');
       if (res.ok) {
         const data = await res.json();
-        setApprovals(data);
+        setApprovals(data || []);
       } else {
         setApprovals([]);
       }
@@ -104,7 +104,7 @@ export default function ApprovalsDashboardPage() {
                   </Link>
                 ) : appr.transaction_hash ? (
                   <a
-                    href={`https://explorer.testnet.arc.network/tx/${appr.transaction_hash}`}
+                    href={`https://testnet.arcscan.app/tx/${appr.transaction_hash}`}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-block border border-white/40 px-4 py-2 text-xs uppercase font-bold hover:border-white"

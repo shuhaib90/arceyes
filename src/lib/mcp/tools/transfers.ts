@@ -49,7 +49,7 @@ export async function handlePrepareSend(token: string, amount: string, recipient
       approval_id: autoApproval.id,
       transactionHash: broadcastResult.txHash,
       message: `✓ Auto-Approve Mode Active: Transfer of ${amount} ${tokenInfo.symbol} to ${recipient} confirmed on Arc EVM.`,
-      explorerUrl: `https://explorer.testnet.arc.network/tx/${broadcastResult.txHash}`,
+      explorerUrl: `https://testnet.arcscan.app/tx/${broadcastResult.txHash}`,
     };
   }
 
@@ -134,7 +134,7 @@ export async function handlePrepareBridge(token: string, amount: string, sourceC
       approval_id: autoApproval.id,
       transactionHash: broadcastResult.txHash,
       message: `✓ Auto-Approve Mode Active: Bridge of ${amount} ${quote.token} from ${sourceChain} to ${targetChain} confirmed via Circle CCTP.`,
-      explorerUrl: `https://explorer.testnet.arc.network/tx/${broadcastResult.txHash}`,
+      explorerUrl: `https://testnet.arcscan.app/tx/${broadcastResult.txHash}`,
     };
   }
 
